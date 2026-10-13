@@ -2,6 +2,21 @@ import XCTest
 @testable import EQCore
 
 final class HeadphoneCatalogTests: XCTestCase {
+    func testPackagedAppFindsItsOwnResourcesWithoutBuildDirectoryFallback() throws {
+        let appURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".app")
+        defer { try? FileManager.default.removeItem(at: appURL) }
+        let resources = appURL.appendingPathComponent("Contents/Resources")
+        try FileManager.default.createDirectory(at: resources, withIntermediateDirectories: true)
+        let plist: [String: String] = ["CFBundleIdentifier": "org.equalizerformac.packaging-test", "CFBundlePackageType": "APPL"]
+        try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0)
+            .write(to: appURL.appendingPathComponent("Contents/Info.plist"))
+        let app = try XCTUnwrap(Bundle(url: appURL))
+        XCTAssertNil(HeadphoneCatalog.resourceBundle(for: app))
+        let embedded = resources.appendingPathComponent("EqualizerForMac_EQCore.bundle")
+        try FileManager.default.createDirectory(at: embedded, withIntermediateDirectories: true)
+        XCTAssertEqual(HeadphoneCatalog.resourceBundle(for: app)?.bundleURL.path, embedded.path)
+    }
+
     func testOfflineCatalogPreservesFiltersAndAttribution() throws {
         let profiles = try HeadphoneCatalog.bundled()
         XCTAssertEqual(profiles.count, 12_588)

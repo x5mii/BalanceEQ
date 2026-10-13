@@ -44,8 +44,16 @@ public enum HeadphoneCatalog {
     public static let sourceCommit = "0b88ecd4e2bef7cf69fd5d50f1d06fb586c10865"
     public static let upstreamURL = URL(string: "https://github.com/opra-project/OPRA")!
     public static let excludedCount = 6
-    public static var logoURL: URL? { Bundle.module.url(forResource: "opra_logo_landscape", withExtension: "png") }
-    public static var licenseURL: URL? { Bundle.module.url(forResource: "OPRA-LICENSE", withExtension: "md") }
+    public static var logoURL: URL? { resourceBundle(for: .main)?.url(forResource: "opra_logo_landscape", withExtension: "png") }
+    public static var licenseURL: URL? { resourceBundle(for: .main)?.url(forResource: "OPRA-LICENSE", withExtension: "md") }
+
+    static func resourceBundle(for app: Bundle) -> Bundle? {
+        // SwiftPM 6.2's generated accessor does not search Contents/Resources.
+        if app.bundleURL.pathExtension == "app" {
+            return app.resourceURL.flatMap { Bundle(url: $0.appendingPathComponent("EqualizerForMac_EQCore.bundle")) }
+        }
+        return Bundle.module
+    }
 
     private struct Index: Decodable {
         let version: Int
@@ -54,7 +62,7 @@ public enum HeadphoneCatalog {
     }
 
     public static func bundled() throws -> [HeadphoneProfile] {
-        guard let url = Bundle.module.url(forResource: "headphones", withExtension: "json") else {
+        guard let url = resourceBundle(for: .main)?.url(forResource: "headphones", withExtension: "json") else {
             throw EQError.invalid("The headphone catalog is missing. Reinstall the app to restore it.")
         }
         return try decode(Data(contentsOf: url))
