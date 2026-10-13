@@ -11,6 +11,13 @@ public enum APOCodec {
         var foundPreamp = false
         var foundCommand = false
         for (index, rawLine) in normalized.components(separatedBy: "\n").enumerated() {
+            let comment = rawLine.trimmingCharacters(in: .whitespaces.union(CharacterSet(charactersIn: "\u{FEFF}")))
+            if comment.lowercased().hasPrefix("# attribution:") {
+                guard preset.attribution == nil else { throw EQError.line(index + 1, "Duplicate attribution comment.") }
+                preset.attribution = String(comment.dropFirst("# attribution:".count)).trimmingCharacters(in: .whitespaces)
+                do { try preset.validate() }
+                catch { throw EQError.line(index + 1, error.localizedDescription) }
+            }
             let line = rawLine.split(separator: "#", maxSplits: 1, omittingEmptySubsequences: false)[0]
                 .trimmingCharacters(in: .whitespacesAndNewlines.union(CharacterSet(charactersIn: "\u{FEFF}")))
             guard !line.isEmpty else { continue }
@@ -92,6 +99,7 @@ public enum APOCodec {
 
     public static func export(_ preset: EQPreset) -> String {
         var lines = ["# Equalizer for Mac — supported Equalizer APO filters", "Preamp: \(preset.preampDB) dB"]
+        if let attribution = preset.attribution { lines.insert("# Attribution: \(attribution)", at: 1) }
         for (index, band) in preset.bands.enumerated() {
             let type: String
             switch band.type {

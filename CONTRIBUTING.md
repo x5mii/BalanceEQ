@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 # Contributing
 
-Keep changes focused and use Swift, C, and the existing Apple frameworks before adding dependencies. Contributions are made under GPL-3.0-or-later. Preserve existing license notices and record any new third-party source and license in `THIRD_PARTY_NOTICES.md`.
+Keep changes focused and use Swift, C, and the existing Apple frameworks before adding dependencies. Code contributions are made under GPL-3.0-or-later; bundled OPRA data retains its separate CC BY-SA 4.0 license. Preserve existing license notices and record any new third-party source and license in `THIRD_PARTY_NOTICES.md`.
 
 ## Build and checks
 

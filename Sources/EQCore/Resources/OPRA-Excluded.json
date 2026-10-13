@@ -1,0 +1,26 @@
+[
+  {
+    "id": "sennheiser:momentum_true_wireless::oratory1990_harman_target",
+    "reason": "unsupported filter convention (requires explicit Q-based peak or center shelf)"
+  },
+  {
+    "id": "tin_hifi:p1::oratory1990_harman_target",
+    "reason": "unsupported filter convention (requires explicit Q-based peak or center shelf)"
+  },
+  {
+    "id": "tin_hifi:p1::oratory1990_usound_target",
+    "reason": "unsupported filter convention (requires explicit Q-based peak or center shelf)"
+  },
+  {
+    "id": "fostex:t_x0::oratory1990_harman_target",
+    "reason": "unsupported filter convention (requires explicit Q-based peak or center shelf)"
+  },
+  {
+    "id": "64_audio:n8::oratory1990_harman_target",
+    "reason": "unsupported filter convention (requires explicit Q-based peak or center shelf)"
+  },
+  {
+    "id": "ultrasone:edition_15::oratory1990_harman_target",
+    "reason": "filter parameters outside frequency/gain/Q boundaries"
+  }
+]

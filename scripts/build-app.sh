@@ -26,6 +26,9 @@ else
 fi
 cp Resources/Info.plist "$bundle/Contents/Info.plist"
 cp LICENSE THIRD_PARTY_NOTICES.md "$bundle/Contents/Resources/"
+resource_bundle="EqualizerForMac_EQCore.bundle"
+rm -rf "$bundle/Contents/Resources/$resource_bundle"
+ditto "$binary_directory/$resource_bundle" "$bundle/Contents/Resources/$resource_bundle"
 plutil -lint "$bundle/Contents/Info.plist"
 if [ -n "${SIGNING_IDENTITY:-}" ]; then
     codesign --force --options runtime --timestamp --sign "$SIGNING_IDENTITY" "$bundle"

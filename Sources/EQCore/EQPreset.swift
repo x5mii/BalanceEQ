@@ -84,14 +84,16 @@ public struct EQPreset: Identifiable, Codable, Equatable, Sendable {
     public var preampDB: Double
     public var bands: [EQBand]
     public var version: Int
+    public var attribution: String?
 
     public init(id: UUID = UUID(), name: String, preampDB: Double = 0,
-                bands: [EQBand] = [], version: Int = 1) {
+                bands: [EQBand] = [], version: Int = 1, attribution: String? = nil) {
         self.id = id
         self.name = name
         self.preampDB = preampDB
         self.bands = bands
         self.version = version
+        self.attribution = attribution
     }
 
     public static var flat: EQPreset {
@@ -101,6 +103,11 @@ public struct EQPreset: Identifiable, Codable, Equatable, Sendable {
 
     public func validate(sampleRate: Double? = nil) throws {
         guard version == 1 else { throw EQError.invalid("Unsupported preset version \(version).") }
+        if let attribution {
+            guard attribution.count <= 1_000, !attribution.contains(where: { $0.isNewline }) else {
+                throw EQError.invalid("Profile attribution must be a single line of at most 1,000 characters.")
+            }
+        }
         guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, name.count <= 100 else {
             throw EQError.invalid("Preset names must contain 1–100 characters.")
         }

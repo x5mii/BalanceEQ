@@ -1,0 +1,21 @@
+OPRA headphone equalization profiles
+
+Upstream: https://github.com/opra-project/OPRA
+Snapshot: 0b88ecd4e2bef7cf69fd5d50f1d06fb586c10865 (2026-07-01)
+Input: dist/database_v1.jsonl
+License: CC BY-SA 4.0; see OPRA-LICENSE.md and OPRA-THIRD_PARTY_LICENSES.md.
+The OPRA project supplies the accompanying logo.
+
+This adaptation joins the vendor/product names to their EQ profiles and converts
+peak_dip, low_shelf and high_shelf to the app's Q-based, center-frequency filters.
+Frequencies, gains, Q, preamp and ordered bands are retained exactly. Creator,
+details and original source links are preserved. No curves are blended and no
+unsupported filters are approximated or dropped from an included profile.
+
+12,588 complete profiles are included. Six complete profiles are excluded:
+five contain slope-only low-pass filters without explicit Q, and one contains
+an 8.5 Hz band below the app's 10 Hz minimum. See OPRA-Excluded.json for IDs.
+
+Regenerate from the pinned data with scripts/update-headphone-catalog.py.
+The app performs no network request to browse or apply these bundled profiles.
+Selected presets retain creator, source, license and conversion attribution.

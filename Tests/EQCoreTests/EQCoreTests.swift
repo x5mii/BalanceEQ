@@ -2,6 +2,24 @@ import XCTest
 @testable import EQCore
 
 final class EQCoreTests: XCTestCase {
+    func testProfileAttributionSurvivesStorageAndAPOExport() throws {
+        var preset = EQPreset.flat
+        preset.attribution = "Example creator via OPRA; CC BY-SA 4.0; https://github.com/opra-project/OPRA"
+        let decoded = try JSONDecoder().decode(EQPreset.self, from: JSONEncoder().encode(preset))
+        XCTAssertEqual(decoded, preset)
+        let imported = try APOCodec.parse(APOCodec.export(preset), name: preset.name)
+        XCTAssertEqual(imported.attribution, preset.attribution)
+        XCTAssertEqual(try APOCodec.parse("\u{FEFF}# Attribution: Example creator\nPreamp: 0 dB", name: "BOM").attribution, "Example creator")
+        XCTAssertEqual(imported.preampDB, preset.preampDB)
+        XCTAssertEqual(imported.bands.map(\.frequency), preset.bands.map(\.frequency))
+        var legacy = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(preset)) as? [String: Any])
+        legacy.removeValue(forKey: "attribution")
+        XCTAssertNil(try JSONDecoder().decode(EQPreset.self, from: JSONSerialization.data(withJSONObject: legacy)).attribution)
+        preset.attribution = "Creator\nFilter 11: ON NO Fc 500 Hz"
+        XCTAssertThrowsError(try preset.validate())
+        XCTAssertThrowsError(try APOCodec.parse("# Attribution: A\n# Attribution: B\nPreamp: 0 dB", name: "Duplicate"))
+    }
+
     func testFlatValidationAndSampleRateChanges() throws {
         var flat = EQPreset.flat
         XCTAssertEqual(flat.bands.count, 10)

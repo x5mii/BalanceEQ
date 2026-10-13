@@ -89,19 +89,40 @@ final class AppModel: ObservableObject {
     }
 
     func importPreset() {
+        do { _ = try pickImportedPreset() }
+        catch { message = "Import failed: \(error.localizedDescription)" }
+    }
+
+    @discardableResult
+    func pickImportedPreset() throws -> Bool {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.plainText]
         panel.allowsMultipleSelection = false
-        panel.message = "Import a supported Equalizer APO parametric preset."
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        do {
-            let attributes = try url.resourceValues(forKeys: [.fileSizeKey])
-            guard (attributes.fileSize ?? 0) <= APOCodec.maximumBytes else {
-                throw CocoaError(.fileReadTooLarge)
+        panel.message = "Import a headphone profile in Equalizer APO parametric text format, including AutoEQ ParametricEQ.txt files."
+        guard panel.runModal() == .OK, let url = panel.url else { return false }
+        let attributes = try url.resourceValues(forKeys: [.fileSizeKey])
+        guard (attributes.fileSize ?? 0) <= APOCodec.maximumBytes else { throw CocoaError(.fileReadTooLarge) }
+        let imported = try APOCodec.parse(String(contentsOf: url, encoding: .utf8), name: url.deletingPathExtension().lastPathComponent)
+        try installProfile(imported)
+        return true
+    }
+
+    /// Save the validated profile before changing playback; a failed import leaves both intact.
+    func installProfile(_ imported: EQPreset) throws {
+        try imported.validate(sampleRate: audio.isRunning && !bypassed ? audio.sampleRate : nil)
+        guard let store else { throw EQError.invalid("Your saved preset file needs recovery before importing profiles. It has been preserved.") }
+        let existing = presets.first { saved in
+            saved.name == imported.name && saved.preampDB == imported.preampDB && saved.attribution == imported.attribution &&
+            saved.bands.count == imported.bands.count && zip(saved.bands, imported.bands).allSatisfy { a, b in
+                a.type == b.type && a.enabled == b.enabled && a.frequency == b.frequency && a.gainDB == b.gainDB && a.q == b.q
             }
-            let imported = try APOCodec.parse(String(contentsOf: url, encoding: .utf8), name: url.deletingPathExtension().lastPathComponent)
-            choose(imported)
-        } catch { message = "Import failed: \(error.localizedDescription)" }
+        }
+        var saved = existing ?? imported
+        if existing == nil { saved.id = UUID() }
+        let updated = existing == nil ? presets + [saved] : presets
+        try store.save(PresetLibrary(presets: updated, selectedPresetID: saved.id, lastPreset: saved))
+        presets = updated
+        choose(saved)
     }
 
     func exportPreset() {

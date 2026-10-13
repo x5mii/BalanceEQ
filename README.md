@@ -26,6 +26,7 @@ Device enumeration is available without starting capture or changing audio setti
 ## Using the equalizer
 
 - Start with the ten-band Flat preset, then select a band to edit frequency, gain, Q, type, or enablement. Add or remove bands, up to 32. Types are peaking, low/high shelf, low/high pass, and notch. The response graph uses the playback engine's coefficients.
+- Double-click a band gain or preamp slider to reset it to 0 dB. Drag a band's frequency number up or right to increase it, down or left to decrease it. The fields below still accept exact values.
 - Choose **Start** to enable processing. macOS may request System Audio Recording permission. That permission permits the audio tap; this app processes samples in memory and does not save or upload recordings. It excludes its own playback and disables unused physical input streams.
 - The app follows the macOS default output. Selecting **System output** changes that default. This version processes one physical stereo output with one supported 32-bit floating-point PCM stream. Virtual/aggregate outputs, multichannel processing, per-app routing, separately routed alerts, convolution, and protected-media guarantees are outside this version's scope.
 - **Bypass** transitions to the original signal, removing both filters and preamp while routing stays active. **Stop** and **Quit** release the tap and private aggregate device. Closing the window keeps processing active; reopen it or select presets from the menu bar. Processing starts only when you request it.
@@ -45,6 +46,10 @@ The UI follows light/dark appearance, uses native Liquid Glass on macOS 26+, and
 Disabled bands can retain frequencies above the current Nyquist limit. Bypass also permits those stored frequencies. Enabling processing with an incompatible active band requires lowering its frequency or disabling it.
 
 ## Presets and Equalizer APO compatibility
+
+Open **Preset → Headphone Profiles…** to search the bundled [OPRA](https://github.com/opra-project/OPRA) library of 12,588 headphone profiles, with creator and measurement details. Browsing and applying profiles work offline. Applying a profile saves it in your preset menu; creator attribution remains in saved presets and exported APO text. The catalog omits six upstream profiles that exceed the supported filter conventions or parameter ranges; no filters are approximated.
+
+**Import EQ File…** accepts supported Equalizer APO text, including AutoEQ `ParametricEQ.txt` files. A valid import is saved automatically before being applied. Invalid files or failed saves leave the current preset intact.
 
 **Save a Copy** creates a named preset without overwriting another. Named presets and the current draft are stored locally in `~/Library/Application Support/EqualizerForMac/state.json`. Saves validate a versioned JSON document, write atomically, and retain the previous valid document as `state.backup.json`. Corrupt or unsupported saved data is reported and preserved; it is not silently replaced. To recover manually, quit the app, preserve the damaged file elsewhere, and restore an inspected backup.
 
@@ -80,4 +85,4 @@ NOTARY_PROFILE="your-notary-profile" ./scripts/notarize.sh
 
 The script reruns checks, builds both architectures, signs with the hardened runtime, submits to Apple, staples the ticket, checks Gatekeeper, and creates `build/Equalizer-for-Mac-0.1.0.zip` with a SHA-256 sidecar. It does not publish a GitHub release. The source and corresponding free signed binary should be published together only after the acceptance record is complete.
 
-Licensed under [GNU GPL version 3 or any later version](LICENSE), without warranty. Our releases are free; the license also permits paid redistribution subject to its terms. Equalizer APO and Peace are independent projects; this project is not affiliated with them. See [third-party notices](THIRD_PARTY_NOTICES.md).
+The app code is licensed under [GNU GPL version 3 or any later version](LICENSE), without warranty. The bundled OPRA dataset remains separately licensed under CC BY-SA 4.0. Our releases are free; these licenses also permit paid redistribution subject to their terms. Equalizer APO and Peace are independent projects; this project is not affiliated with them. See [third-party notices](THIRD_PARTY_NOTICES.md) for catalog provenance and licenses.

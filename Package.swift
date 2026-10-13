@@ -7,7 +7,7 @@ let package = Package(
     products: [.executable(name: "EqualizerMac", targets: ["EqualizerMac"])],
     targets: [
         .target(name: "CEQ", publicHeadersPath: "include", linkerSettings: [.linkedFramework("Accelerate"), .linkedFramework("CoreAudio")]),
-        .target(name: "EQCore", dependencies: ["CEQ"]),
+        .target(name: "EQCore", dependencies: ["CEQ"], resources: [.process("Resources")]),
         .executableTarget(name: "EqualizerMac", dependencies: ["EQCore", "CEQ"], linkerSettings: [.linkedFramework("AppKit"), .linkedFramework("CoreAudio")]),
         .testTarget(name: "CEQTests", dependencies: ["CEQ"]),
         .testTarget(name: "EQCoreTests", dependencies: ["EQCore"]),

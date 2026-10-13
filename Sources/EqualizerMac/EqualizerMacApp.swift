@@ -18,7 +18,8 @@ enum EqualizerLauncher {
         #if DEBUG
         if CommandLine.arguments.contains("--self-test") {
             AudioController.checkCleanupHandling()
-            print("Core Audio teardown fault-injection checks passed.")
+            EqualizerView.checkControlGestures()
+            print("Core Audio teardown and control gesture checks passed.")
             return
         }
         #endif

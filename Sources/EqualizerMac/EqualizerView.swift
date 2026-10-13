@@ -9,6 +9,8 @@ struct EqualizerView: View {
     @Environment(\.openWindow) private var openWindow
     @State private var showingSave = false
     @State private var showingPresets = false
+    @State private var showingHeadphones = false
+    @State private var showingCredits = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -34,6 +36,7 @@ struct EqualizerView: View {
         } message: { Text(model.message ?? "") }
         .sheet(isPresented: $showingSave) { saveSheet }
         .sheet(isPresented: $showingPresets) { presetSheet }
+        .sheet(isPresented: $showingHeadphones) { HeadphoneProfilesView(model: model) }
     }
 
     private var header: some View {
@@ -71,6 +74,7 @@ struct EqualizerView: View {
                     Divider()
                     Button("Save a Copy…") { showingSave = true }
                     Button("Manage Presets…") { showingPresets = true }
+                    Button("Headphone Profiles…") { showingHeadphones = true }
                     Button("Import APO Preset…", action: model.importPreset)
                     Button("Export APO Preset…", action: model.exportPreset)
                 } label: {
@@ -117,7 +121,10 @@ struct EqualizerView: View {
             ScrollView(.horizontal) {
                 HStack(spacing: 8) {
                     ForEach($model.preset.bands) { $band in
-                        BandStrip(band: $band, selected: model.selectedBandID == band.id) { model.selectedBandID = band.id }
+                        BandStrip(band: $band, selected: model.selectedBandID == band.id,
+                                  sampleRate: audio.isRunning && !model.bypassed ? audio.sampleRate : nil) {
+                            model.selectedBandID = band.id
+                        }
                     }
                 }.padding(.bottom, 6)
             }
@@ -153,6 +160,13 @@ struct EqualizerView: View {
                     .font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
                 Text("Audio stays on your Mac. Closing this window keeps EQ running.")
                     .font(.caption2).foregroundStyle(.tertiary)
+                if let attribution = model.preset.attribution {
+                    Button("Profile credits") { showingCredits = true }
+                        .buttonStyle(.link).font(.caption2)
+                        .popover(isPresented: $showingCredits) {
+                            Text(attribution).font(.caption).textSelection(.enabled).padding(20).frame(width: 440)
+                        }
+                }
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 5) {
@@ -219,7 +233,16 @@ struct EqualizerView: View {
 private struct BandStrip: View {
     @Binding var band: EQBand
     let selected: Bool
+    let sampleRate: Double?
     let select: () -> Void
+    @State private var dragStart: Double?
+    @GestureState private var isDragging = false
+
+    private var maximumFrequency: Double {
+        guard band.enabled, let sampleRate else { return 20_000 }
+        return min(20_000, (sampleRate / 2 * 100).rounded(.down) / 100 - 0.01)
+    }
+
     var body: some View {
         VStack(spacing: 7) {
             Button(action: select) {
@@ -229,6 +252,23 @@ private struct BandStrip: View {
                     Text("Hz").font(.system(size: 9)).foregroundStyle(.secondary)
                 }.frame(maxWidth: .infinity).contentShape(Rectangle())
             }.buttonStyle(.plain).accessibilityLabel("Edit \(band.frequency, specifier: "%.0f") hertz band")
+                .help("Drag right or up to raise frequency; left or down to lower it. Click to edit exact values below.")
+                .simultaneousGesture(DragGesture(minimumDistance: 3, coordinateSpace: .global)
+                    .updating($isDragging) { _, state, _ in state = true }
+                    .onChanged { gesture in
+                        if dragStart == nil { dragStart = band.frequency; select() }
+                        band.frequency = scrubbedFrequency(from: dragStart ?? band.frequency,
+                                                           translation: gesture.translation, maximum: maximumFrequency)
+                    })
+                .onChange(of: isDragging) { _, dragging in if !dragging { dragStart = nil } }
+                .accessibilityAdjustableAction { direction in
+                    select()
+                    switch direction {
+                    case .increment: band.frequency = scrubbedFrequency(from: band.frequency, translation: CGSize(width: 10, height: 0), maximum: maximumFrequency)
+                    case .decrement: band.frequency = scrubbedFrequency(from: band.frequency, translation: CGSize(width: -10, height: 0), maximum: maximumFrequency)
+                    @unknown default: break
+                    }
+                }
             NativeGainSlider(value: $band.gainDB, enabled: band.enabled && band.type.hasGain,
                              label: "\(Int(band.frequency)) hertz gain", range: -24...24, vertical: true)
                 .frame(width: 32, height: 112)
@@ -254,10 +294,11 @@ private struct NativeGainSlider: NSViewRepresentable {
 
     func makeCoordinator() -> Coordinator { Coordinator(value: $value) }
     func makeNSView(context: Context) -> NSSlider {
-        let slider = NSSlider(value: value, minValue: range.lowerBound, maxValue: range.upperBound,
+        let slider = ResettableGainSlider(value: value, minValue: range.lowerBound, maxValue: range.upperBound,
                               target: context.coordinator, action: #selector(Coordinator.changed(_:)))
         slider.isVertical = vertical
         slider.isContinuous = true
+        slider.toolTip = "Double-click to reset to 0 dB."
         return slider
     }
     func updateNSView(_ slider: NSSlider, context: Context) {
@@ -266,6 +307,7 @@ private struct NativeGainSlider: NSViewRepresentable {
         slider.isEnabled = enabled
         slider.setAccessibilityLabel(label)
         slider.setAccessibilityValueDescription(String(format: "%.1f decibels", value))
+        slider.setAccessibilityHelp("Double-click to reset to zero decibels. Arrow keys adjust gain.")
     }
     final class Coordinator: NSObject {
         var value: Binding<Double>
@@ -273,6 +315,38 @@ private struct NativeGainSlider: NSViewRepresentable {
         @objc func changed(_ slider: NSSlider) { value.wrappedValue = (slider.doubleValue * 10).rounded() / 10 }
     }
 }
+
+private final class ResettableGainSlider: NSSlider {
+    override func mouseDown(with event: NSEvent) {
+        if isEnabled, event.clickCount >= 2 {
+            doubleValue = 0
+            sendAction(action, to: target)
+        } else {
+            super.mouseDown(with: event)
+        }
+    }
+}
+
+private func scrubbedFrequency(from start: Double, translation: CGSize, maximum: Double) -> Double {
+    // One octave per 120 points keeps low and high frequencies equally easy to tune.
+    let frequency = start * pow(2, (translation.width - translation.height) / 120)
+    return max(10, min(maximum, (frequency * 100).rounded() / 100))
+}
+
+#if DEBUG
+extension EqualizerView {
+    static func checkControlGestures() {
+        func value(_ x: Double, _ y: Double, start: Double = 1000, maximum: Double = 20_000) -> Double {
+            scrubbedFrequency(from: start, translation: CGSize(width: x, height: y), maximum: maximum)
+        }
+        precondition(value(0, 0, start: 31.25) == 31.25)
+        precondition(value(120, 0) == 2000 && value(0, -120) == 2000)
+        precondition(value(-120, 0) == 500 && value(0, 120) == 500)
+        precondition(value(12000, 0) == 20_000 && value(-12000, 0) == 10)
+        precondition(value(120, 0, start: 16_000, maximum: 15_999.99) == 15_999.99)
+    }
+}
+#endif
 
 private struct ResponseGraph: View, Equatable {
     let preset: EQPreset
