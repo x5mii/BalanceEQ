@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:Equalizer for Mac}",
+            "name": "Debug EqualizerMac",
+            "target": "EqualizerMac",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug EqualizerMac"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:Equalizer for Mac}",
+            "name": "Release EqualizerMac",
+            "target": "EqualizerMac",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release EqualizerMac"
+        }
+    ]
+}

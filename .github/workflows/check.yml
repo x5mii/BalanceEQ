@@ -1,0 +1,25 @@
+name: Build and test
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  macos:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode 26 or later
+        run: |
+          xcode=$(find /Applications -maxdepth 1 -name 'Xcode_26*.app' | sort | tail -1)
+          if [ -z "$xcode" ]; then
+            echo 'Xcode 26+ is required for the native Liquid Glass build.' >&2
+            exit 1
+          fi
+          sudo xcode-select -s "$xcode/Contents/Developer"
+      - run: ./scripts/check.sh
+      - run: ./scripts/build-app.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: local-build-unnotarized
+          path: build/Equalizer for Mac.app
