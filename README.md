@@ -69,7 +69,7 @@ APO treats a trailing group of exactly three decimal digits in a frequency as a 
 
 ## Development and release
 
-`./scripts/check.sh` runs Swift tests for DSP, presets, and APO compatibility, the C audio-callback harness, plist validation, and `git diff --check`. See [CONTRIBUTING.md](CONTRIBUTING.md) for the small code structure and [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md) for the separate hardware release gate.
+`./scripts/check.sh` runs Swift tests for DSP, presets, and APO compatibility, Core Audio teardown fault-injection checks, the C audio-callback harness, plist validation, and `git diff --check`. See [CONTRIBUTING.md](CONTRIBUTING.md) for the small code structure and [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md) for the separate hardware release gate.
 
 A maintainer with a Developer ID Application certificate and an existing `notarytool` keychain profile can produce a signed candidate:
 

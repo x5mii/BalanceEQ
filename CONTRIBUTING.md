@@ -12,7 +12,7 @@ Use Xcode 26 or later with its command-line tools selected and license accepted:
 ./scripts/build-app.sh
 ```
 
-The first command runs the Swift tests, standalone C callback checks, plist validation, and whitespace checks. The second creates a universal ad-hoc-signed development app. `ARCHITECTURES=arm64` or `ARCHITECTURES=x86_64` limits a local build; compiling an architecture is not runtime acceptance on that hardware. The GitHub Actions workflow performs these checks and uploads a development artifact; it does not notarize or publish a release.
+The first command runs the Swift tests, Core Audio teardown fault-injection checks, standalone C callback checks, plist validation, and whitespace checks. The second creates a universal ad-hoc-signed development app. `ARCHITECTURES=arm64` or `ARCHITECTURES=x86_64` limits a local build; compiling an architecture is not runtime acceptance on that hardware. The GitHub Actions workflow performs these checks and uploads a development artifact; it does not notarize or publish a release.
 
 ## Code map
 
