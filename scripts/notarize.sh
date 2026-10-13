@@ -16,7 +16,7 @@ xcrun notarytool submit "$zip" --keychain-profile "$NOTARY_PROFILE" --wait
 xcrun stapler staple "$bundle"
 xcrun stapler validate "$bundle"
 spctl --assess --type execute --verbose=2 "$bundle"
-release="$PWD/build/BalanceEQ-0.1.0.zip"
+release="$PWD/build/BalanceEQ.zip"
 ditto -c -k --keepParent "$bundle" "$release"
-shasum -a 256 "$release" > "$release.sha256"
+(cd build && shasum -a 256 BalanceEQ.zip > BalanceEQ.zip.sha256)
 printf 'Notarized release: %s\n' "$release"

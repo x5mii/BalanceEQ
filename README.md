@@ -7,6 +7,22 @@ A native, free macOS equalizer inspired by the workflow of Equalizer APO and Pea
 
 **Development preview:** the source and local build are available in this checkout. A signed public release has not been produced. Hardware audio acceptance, macOS 14.2 compatibility, and Intel runtime testing remain pending; see [the acceptance record](docs/ACCEPTANCE.md). Building successfully does not establish those results.
 
+## Install with one command
+
+**Ready for the first signed release:** there is currently no public release binary. Until one is published, this installer reports that no download is available and leaves your Mac unchanged.
+
+Once a signed release is available, paste this one command into Terminal:
+
+```sh
+/bin/bash -c 'set -e; installer=$(curl -fsSL https://raw.githubusercontent.com/x5mii/BalanceEQ/main/scripts/install.sh); /bin/bash -c "$installer"'
+```
+
+The command fetches the complete [installer script](scripts/install.sh) before running it. The installer downloads the latest universal GitHub release, verifies its SHA-256 checksum, code signature, and macOS Gatekeeper approval, then installs into `~/Applications/BalanceEQ.app` and opens it. No sudo, Homebrew, Xcode, or account is needed. macOS 14.2 or later is required.
+
+Run the same command to update; first choose **Quit BalanceEQ** from the menu bar. Updates preserve your presets and restore the previous app if replacement fails. The installer never disables Gatekeeper, removes quarantine, or grants audio permission. On first use, choose **Start EQ** and allow System Audio Recording when macOS asks.
+
+To uninstall, quit BalanceEQ and move `~/Applications/BalanceEQ.app` to the Trash. Your presets remain in `~/Library/Application Support/EqualizerForMac`.
+
 ## Build and run
 
 The deployment target is macOS 14.2 or later, for Apple Silicon and Intel. Building requires Xcode 26 or later, its command-line tools selected, and its license accepted. The macOS 26 SDK is needed to compile native Liquid Glass; earlier supported systems use standard materials.
@@ -81,7 +97,7 @@ APO treats a trailing group of exactly three decimal digits in a frequency as a 
 
 ## Development and release
 
-`./scripts/check.sh` runs Swift tests for DSP, presets, and APO compatibility, Core Audio teardown fault-injection checks, the C audio-callback harness, plist validation, and `git diff --check`. See [CONTRIBUTING.md](CONTRIBUTING.md) for the small code structure and [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md) for the separate hardware release gate.
+`./scripts/check.sh` runs Swift tests for DSP, presets, and APO compatibility, Core Audio teardown fault-injection checks, the C audio-callback harness, isolated installer checks, plist validation, and `git diff --check`. Installer checks use disposable home directories and simulated downloads/signature approvals; they never install or launch an app on the developer's account. See [CONTRIBUTING.md](CONTRIBUTING.md) for the small code structure and [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md) for the separate hardware release gate.
 
 A maintainer with a Developer ID Application certificate and an existing `notarytool` keychain profile can produce a signed candidate:
 
@@ -90,6 +106,8 @@ SIGNING_IDENTITY="Developer ID Application: Your Name (TEAMID)" \
 NOTARY_PROFILE="your-notary-profile" ./scripts/notarize.sh
 ```
 
-The script reruns checks, builds both architectures, signs with the hardened runtime, submits to Apple, staples the ticket, checks Gatekeeper, and creates `build/BalanceEQ-0.1.0.zip` with a SHA-256 sidecar. It does not publish a GitHub release. The source and corresponding free signed binary should be published together only after the acceptance record is complete.
+The script reruns checks, builds both architectures, signs with the hardened runtime, submits to Apple, staples the ticket, checks Gatekeeper, and creates `build/BalanceEQ.zip` with `build/BalanceEQ.zip.sha256`. The checksum contains the portable archive filename. It does not publish a GitHub release. The source and corresponding free signed binary should be published together only after the acceptance record is complete.
+
+Publish those two files as assets named exactly **BalanceEQ.zip** and **BalanceEQ.zip.sha256** on a normal GitHub Release marked **Latest**, with a tag pointing to the source revision used to build it. GitHub's `/releases/latest/download/BalanceEQ.zip` URL lets the installer find new versions without changing the install command. Drafts, prereleases, and the unnotarized CI artifacts do not enable this public installer. Keep the same Developer ID identity across releases so macOS can recognize app updates.
 
 The app code is licensed under [GNU GPL version 3 or any later version](LICENSE), without warranty. The bundled OPRA dataset remains separately licensed under CC BY-SA 4.0. Our releases are free; these licenses also permit paid redistribution subject to their terms. Equalizer APO and Peace are independent projects; this project is not affiliated with them. See [third-party notices](THIRD_PARTY_NOTICES.md) for catalog provenance and licenses.

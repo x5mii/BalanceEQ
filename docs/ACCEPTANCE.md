@@ -80,6 +80,7 @@ A device that does not expose the supported stereo float format should produce a
 - [ ] Obtain maintainer Developer ID and notarization credentials; run `./scripts/notarize.sh` successfully for the exact release revision.
 - [ ] Verify both architecture slices, code signature, notarization ticket, Gatekeeper assessment, archive contents, version, and checksum.
 - [ ] Download the signed candidate on a clean Mac/account through the intended distribution path; install, launch with normal Gatekeeper checks, grant permission, process audio, quit, and remove it. Do not substitute a developer-machine launch for this check.
+- [ ] Run the README's one-command installer on a clean Mac without Xcode or Homebrew, then update an existing installation. Verify the published checksum/signature, Gatekeeper approval, first launch, and preservation of presets. Ten isolated installer checks cover success and failure/rollback paths; downloads and signing approval are simulated in those checks and do not establish this acceptance result.
 - [ ] Publish the source revision and corresponding free signed universal binary together through GitHub Releases, with checksum, build instructions, license/notices, and observed compatibility limits. Publication is pending.
 
 ## Result format

@@ -13,4 +13,6 @@ clang -std=c11 -Wall -Wextra -Werror -DEQ_AUDIO_CALLBACK_TEST_MAIN \
     -framework CoreAudio -framework Accelerate -o .build/audio-callback-check
 .build/audio-callback-check
 plutil -lint Resources/Info.plist
+bash -n scripts/install.sh scripts/notarize.sh
+python3 scripts/check-installer.py
 git diff --check
