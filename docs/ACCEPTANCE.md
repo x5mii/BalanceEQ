@@ -44,6 +44,13 @@ The full playback and distribution checkboxes below remain pending; the limited 
 - A short closed-window sample showed CPU time rising from 1.31 to 1.53 seconds over 39 seconds of elapsed time (about **0.56% of one CPU core**), with 135,280 KiB RSS. It included brief test-tone playback and silence, not a sustained-load benchmark. The GUI meter is suspended while hidden; a small callback-error watchdog remains active to release capture promptly on failure.
 - Persistent local signing is now supported with an existing certificate. None is configured on this host; ad-hoc rebuilds can still prompt again. macOS's active system-audio privacy indicator remains expected during processing. Public Developer ID signing, notarization, supported-platform checks, and physical latency measurement remain pending.
 
+### Discord stream echo fix — 2026-10-13
+
+- Stable Discord and its Electron helpers are excluded from the tap, preserving their native playback identity instead of replaying voice chat through BalanceEQ. macOS 26+ also receives bundle-ID exclusions before clients launch; a Core Audio process-list listener refreshes process exclusions without restarting the route. An update failure stops processing through the existing cleanup path.
+- All 19 Swift tests and the check script passed, including new checks for Discord/helper matching, unrelated bundle IDs, and tap-description process replacement. Both architecture slices built and the local ad-hoc signature verified.
+- The updated app resumed processing on FiiO K11 at 48 kHz with 128-frame I/O and live metering. Saved profiles loaded; the user changed the selected profile during the live check, and that change was retained. Discord had no audio client in the read-only HAL enumeration, so actual Discord voice/stream exclusion and launch/relaunch remain unverified.
+- Acceptance still requires a direct Discord stream with a second participant: check no returned voice, game/music stream audio, Discord launched before and after EQ, helper restart/reconnect, and macOS 14.2 behavior. The pre-26 listener reacts after process registration and cannot guarantee exclusion of the first buffers of a newly launched client. Discord browser sessions and PTB/Canary are not covered by this stable-desktop exception.
+
 ### Hardware acceptance
 
 Record the exact device, connection, OS build, CPU, app commit/version, and sample rate with each result.

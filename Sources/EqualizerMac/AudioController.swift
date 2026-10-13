@@ -90,7 +90,8 @@ final class AudioController: ObservableObject {
                 return "\(output.id == selected ? "*" : " ") \(output.name): \(Int(rate)) Hz (id \(output.id))\n  \(HAL.bufferDiagnostics(output.id, sampleRate: rate))"
             }
             return "Eligible stereo outputs (* = macOS default):\n" + lines.joined(separator: "\n") +
-                "\nBuffer durations and HAL-reported latency are not a measurement of added EQ latency."
+                "\nBuffer durations and HAL-reported latency are not a measurement of added EQ latency." +
+                "\nDiscord audio clients kept outside EQ: \(try HAL.discordProcesses())"
         } catch { return "Audio diagnostics: \(error.localizedDescription)" }
     }
 
@@ -141,6 +142,7 @@ final class AudioController: ObservableObject {
         stalledWorker.queue.sync {} // Drain the queued, resource-free cleanup.
         stalledWorker.shutdown() // A repeated shutdown is a no-op.
         AudioWorker.checkMeteringHandling()
+        HAL.checkDiscordExclusions()
         precondition(HAL.preferredBufferFrames(current: 512, range: AudioValueRange(mMinimum: 15, mMaximum: 4096)) == 128)
         precondition(HAL.preferredBufferFrames(current: 64, range: AudioValueRange(mMinimum: 15, mMaximum: 4096)) == 64)
         precondition(HAL.preferredBufferFrames(current: 512, range: AudioValueRange(mMinimum: 256, mMaximum: 4096)) == 256)
@@ -189,6 +191,7 @@ private final class AudioWorker: @unchecked Sendable {
     private var sleeping = false
     private var cleanupBlocked = false
     private var tap: AudioObjectID = 0
+    private var tapDescription: CATapDescription?
     private var aggregate: AudioObjectID = 0
     private var proc: AudioDeviceIOProcID?
     private var callbackMayRun = false
@@ -359,6 +362,11 @@ private final class AudioWorker: @unchecked Sendable {
         var address = HAL.address(selector, scope: scope)
         let block: AudioObjectPropertyListenerBlock = { [weak self] _, _ in
             guard let self else { return }
+            if selector == kAudioHardwarePropertyProcessObjectList {
+                // Process changes must not restart the route or wait for device-event debounce.
+                self.refreshTapExclusions()
+                return
+            }
             self.changeGeneration += 1
             let generation = self.changeGeneration
             self.queue.asyncAfter(deadline: .now() + .milliseconds(100)) { [weak self] in
@@ -369,6 +377,22 @@ private final class AudioWorker: @unchecked Sendable {
         try HAL.check(AudioObjectAddPropertyListenerBlock(object, &address, queue, block), "Observe audio device")
         if routeOnly { routeListeners.append((object, address, block)) }
         else { listeners.append((object, address, block)) }
+    }
+
+    private func refreshTapExclusions() {
+        guard !isShuttingDown, state.running, let description = tapDescription else { return }
+        do {
+            let processes = try HAL.captureExclusions()
+            guard processes != description.processes else { return }
+            description.processes = processes
+            var reference = Unmanaged.passUnretained(description)
+            var address = HAL.address(kAudioTapPropertyDescription)
+            try HAL.check(AudioObjectSetPropertyData(tap, &address, 0, nil,
+                UInt32(MemoryLayout.size(ofValue: reference)), &reference), "Keep Discord outside EQ")
+        } catch {
+            // Never keep replaying voice chat after a failed exclusion update.
+            fail(error)
+        }
     }
 
     private func removeListeners(_ entries: inout [(AudioObjectID, AudioObjectPropertyAddress, AudioObjectPropertyListenerBlock)]) {
@@ -405,13 +429,18 @@ private final class AudioWorker: @unchecked Sendable {
             try HAL.validateStereoFloat(physicalFormat)
             let rate = physicalFormat.mSampleRate
             var parameters = try preset.parameters(sampleRate: rate, bypassed: bypassed)
-            let process = try HAL.ownProcessObject()
-            let description = CATapDescription(excludingProcesses: [process], deviceUID: outputUID, stream: 0)
+            try listen(AudioObjectID(kAudioObjectSystemObject), kAudioHardwarePropertyProcessObjectList, routeOnly: true)
+            let description = CATapDescription(excludingProcesses: try HAL.captureExclusions(), deviceUID: outputUID, stream: 0)
+            if #available(macOS 26.0, *) {
+                // Match even before Discord opens its first audio client; older OSes use the listener.
+                description.bundleIDs = HAL.discordBundleIDs
+            }
             description.name = "BalanceEQ"
             description.uuid = UUID()
             description.isPrivate = true
             description.muteBehavior = .mutedWhenTapped
             try HAL.check(AudioHardwareCreateProcessTap(description, &tap), "Create system audio tap")
+            tapDescription = description
             let tapFormat = try HAL.value(tap, kAudioTapPropertyFormat, initial: AudioStreamBasicDescription())
             try HAL.validateStereoFloat(tapFormat)
             guard abs(tapFormat.mSampleRate - rate) < 0.1 else {
@@ -521,6 +550,7 @@ private final class AudioWorker: @unchecked Sendable {
             return false
         }
         cleanupBlocked = false
+        tapDescription = nil
         if let context { eq_audio_destroy(context) }
         context = nil
         if let dsp { eq_dsp_destroy(dsp) }
@@ -804,6 +834,47 @@ private enum HAL {
             return AudioOutput(id: id, name: name)
         }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }
+    // Discord excludes its own audio from screen sharing. Replaying it as BalanceEQ defeats that.
+    // Keep the desktop app and its Electron helpers on native playback, without EQ or preamp.
+    static let discordBundleIDs = ["", ".helper", ".helper.Renderer", ".helper.GPU", ".helper.Plugin"]
+        .map { "com.hnc.Discord" + $0 }
+
+    static func isDiscord(_ bundleID: String) -> Bool {
+        bundleID == "com.hnc.Discord" || bundleID.hasPrefix("com.hnc.Discord.")
+    }
+
+    static func discordProcesses() throws -> [AudioObjectID] {
+        try ids(AudioObjectID(kAudioObjectSystemObject), kAudioHardwarePropertyProcessObjectList).filter { id in
+            // A process may disappear between enumeration and reading its bundle ID.
+            guard let bundle = try? string(id, kAudioProcessPropertyBundleID) else { return false }
+            return isDiscord(bundle)
+        }
+    }
+
+    static func captureExclusions() throws -> [AudioObjectID] {
+        Array(Set(try [ownProcessObject()] + discordProcesses())).sorted()
+    }
+
+    #if DEBUG
+    static func checkDiscordExclusions() {
+        for bundle in discordBundleIDs + ["com.hnc.Discord.helper.audio"] {
+            precondition(isDiscord(bundle), "Discord helpers must retain their native audio identity")
+        }
+        for bundle in ["", "org.equalizerformac.app", "com.apple.Safari", "com.hnc.DiscordOther", "x.com.hnc.Discord"] {
+            precondition(!isDiscord(bundle), "Unrelated apps must retain EQ processing")
+        }
+        let description = CATapDescription(excludingProcesses: [41, 42], deviceUID: "test-output", stream: 0)
+        description.muteBehavior = .mutedWhenTapped
+        description.processes = [41, 43] // Discord relaunches; own-process exclusion remains.
+        precondition(description.isExclusive && description.processes == [41, 43])
+        precondition(description.deviceUID == "test-output" && description.muteBehavior == .mutedWhenTapped)
+        if #available(macOS 26.0, *) {
+            description.bundleIDs = discordBundleIDs
+            precondition(description.bundleIDs == discordBundleIDs && description.processes.contains(41))
+        }
+    }
+    #endif
+
     static func ownProcessObject() throws -> AudioObjectID {
         var a = address(kAudioHardwarePropertyTranslatePIDToProcessObject)
         var pid = getpid()
