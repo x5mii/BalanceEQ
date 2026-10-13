@@ -35,6 +35,15 @@ The full playback and distribution checkboxes below remain pending; the limited 
 - Actual mouse checks confirmed both band and preamp double-click reset to 0 dB. Frequency dragging changed 31.25→62.5 Hz to the right, 62.5→88.39 Hz upward, 88.39→62.5 Hz downward, and 62.5→52.56 Hz to the left. Exact numerical editing remained available.
 - These profile/UI checks ran with processing stopped. The user's original tuning and saved presets were restored afterward; temporary test imports were removed. The hardware release matrix remains separate.
 
+### BalanceEQ background and latency update — 2026-10-13
+
+- The renamed app builds for both arm64 and x86_64 with macOS 14.2 minimum, keeps the existing bundle identifier and preset store, and is still ad-hoc signed. All 19 Swift tests, C callback checks, lifecycle/buffer fault-injection checks, plist validation, and whitespace checks passed. New checks cover stopped polling, hidden metering, unchanged-state publication, buffer bounds, delayed property application, restoration timeouts, and another client's buffer changes.
+- Native UI inspection confirmed the B/EQ logo, Apple blue controls, integrated native window buttons, and no vertical or horizontal scrollbar with the user's attributed ten-band DT990 profile at the default window size. Closing the window kept the process alive; reopening retained processing and resumed live metering. BalanceEQ uses accessory activation and `LSUIElement` for menu-bar operation without a Dock icon.
+- On FiiO K11 at 48 kHz the app's private aggregate reported **128 frames** (2.67 ms per callback buffer). The physical device remained at its original **512 frames**, both during processing and after Stop/Quit. This device did not require a propagated physical-buffer restoration; that branch has injected software checks, not real-device acceptance yet. These values do not establish end-to-end or added EQ latency.
+- The quiet 997 Hz test tone registered **−50.6 dBFS** with the user's DT990 tuning. After closing/reopening, processing and metering remained active. Stop reported native playback restored; normal Quit while processing exited the process. No new permission prompt appeared during these starts. Presets and tuning were preserved unchanged.
+- A short closed-window sample showed CPU time rising from 1.31 to 1.53 seconds over 39 seconds of elapsed time (about **0.56% of one CPU core**), with 135,280 KiB RSS. It included brief test-tone playback and silence, not a sustained-load benchmark. The GUI meter is suspended while hidden; a small callback-error watchdog remains active to release capture promptly on failure.
+- Persistent local signing is now supported with an existing certificate. None is configured on this host; ad-hoc rebuilds can still prompt again. macOS's active system-audio privacy indicator remains expected during processing. Public Developer ID signing, notarization, supported-platform checks, and physical latency measurement remain pending.
+
 ### Hardware acceptance
 
 Record the exact device, connection, OS build, CPU, app commit/version, and sample rate with each result.

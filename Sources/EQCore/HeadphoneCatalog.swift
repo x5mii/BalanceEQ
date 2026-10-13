@@ -21,7 +21,7 @@ public struct HeadphoneProfile: Decodable, Identifiable, Hashable, Sendable {
 
     public func preset() throws -> EQPreset {
         try validateMetadata()
-        let credit = "\(creator) • \(description) • OPRA \(HeadphoneCatalog.upstreamURL.absoluteString) @ \(HeadphoneCatalog.sourceCommit) • Profile: \(id) • \(sourceURL?.absoluteString ?? "") • Profile data: CC BY-SA 4.0 https://creativecommons.org/licenses/by-sa/4.0/ • Converted to Equalizer for Mac format; editable."
+        let credit = "\(creator) • \(description) • OPRA \(HeadphoneCatalog.upstreamURL.absoluteString) @ \(HeadphoneCatalog.sourceCommit) • Profile: \(id) • \(sourceURL?.absoluteString ?? "") • Profile data: CC BY-SA 4.0 https://creativecommons.org/licenses/by-sa/4.0/ • Converted to BalanceEQ format; editable."
         let preset = EQPreset(name: presetName, preampDB: preampDB, bands: bands.map(\.value), attribution: credit)
         try preset.validate()
         return preset

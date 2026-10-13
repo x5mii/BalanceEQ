@@ -9,14 +9,14 @@ case "$SIGNING_IDENTITY" in
 esac
 ./scripts/check.sh
 ARCHITECTURES="arm64 x86_64" CONFIGURATION=release ./scripts/build-app.sh
-bundle="$PWD/build/Equalizer for Mac.app"
-zip="$PWD/build/Equalizer-for-Mac-notarization.zip"
+bundle="$PWD/build/BalanceEQ.app"
+zip="$PWD/build/BalanceEQ-notarization.zip"
 ditto -c -k --keepParent "$bundle" "$zip"
 xcrun notarytool submit "$zip" --keychain-profile "$NOTARY_PROFILE" --wait
 xcrun stapler staple "$bundle"
 xcrun stapler validate "$bundle"
 spctl --assess --type execute --verbose=2 "$bundle"
-release="$PWD/build/Equalizer-for-Mac-0.1.0.zip"
+release="$PWD/build/BalanceEQ-0.1.0.zip"
 ditto -c -k --keepParent "$bundle" "$release"
 shasum -a 256 "$release" > "$release.sha256"
 printf 'Notarized release: %s\n' "$release"

@@ -17,13 +17,14 @@ for architecture in $architectures; do
     executables+=("$binary_directory/EqualizerMac")
 done
 
-bundle="$PWD/build/Equalizer for Mac.app"
+bundle="$PWD/build/BalanceEQ.app"
 mkdir -p "$bundle/Contents/MacOS" "$bundle/Contents/Resources"
 if [ "${#executables[@]}" -eq 1 ]; then
     cp "${executables[0]}" "$bundle/Contents/MacOS/EqualizerMac"
 else
     xcrun lipo -create "${executables[@]}" -output "$bundle/Contents/MacOS/EqualizerMac"
 fi
+cp Resources/BalanceEQ.icns "$bundle/Contents/Resources/"
 cp Resources/Info.plist "$bundle/Contents/Info.plist"
 cp LICENSE THIRD_PARTY_NOTICES.md "$bundle/Contents/Resources/"
 resource_bundle="EqualizerForMac_EQCore.bundle"
@@ -32,6 +33,8 @@ ditto "$binary_directory/$resource_bundle" "$bundle/Contents/Resources/$resource
 plutil -lint "$bundle/Contents/Info.plist"
 if [ -n "${SIGNING_IDENTITY:-}" ]; then
     codesign --force --options runtime --timestamp --sign "$SIGNING_IDENTITY" "$bundle"
+elif [ -n "${LOCAL_SIGNING_IDENTITY:-}" ]; then
+    codesign --force --timestamp=none --sign "$LOCAL_SIGNING_IDENTITY" "$bundle"
 else
     codesign --force --sign - "$bundle"
 fi

@@ -16,7 +16,7 @@ struct EqualizerView: View {
         VStack(spacing: 0) {
             header
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 14) {
                     controls
                     ResponseGraph(preset: model.preset, sampleRate: audio.sampleRate > 0 ? audio.sampleRate : 48000, bypassed: model.bypassed)
                         .equatable()
@@ -24,14 +24,16 @@ struct EqualizerView: View {
                     bandSection
                     inspector
                     footer
-                }.padding(20)
+                }.padding(.horizontal, 20).padding(.vertical, 16)
             }
+            .scrollBounceBehavior(.basedOnSize)
         }
-        .frame(minWidth: 930, minHeight: 710)
+        .ignoresSafeArea(.container, edges: .top)
+        .frame(minWidth: 930, minHeight: 740)
         .background(Color(nsColor: .windowBackgroundColor))
-        .tint(.teal)
+        .tint(.blue)
         .onAppear { appDelegate.reopen = { openWindow(id: "equalizer") } }
-        .alert("Equalizer for Mac", isPresented: Binding(get: { model.message != nil }, set: { if !$0 { model.message = nil } })) {
+        .alert("BalanceEQ", isPresented: Binding(get: { model.message != nil }, set: { if !$0 { model.message = nil } })) {
             Button("OK") { model.message = nil }
         } message: { Text(model.message ?? "") }
         .sheet(isPresented: $showingSave) { saveSheet }
@@ -41,16 +43,14 @@ struct EqualizerView: View {
 
     private var header: some View {
         HStack(spacing: 14) {
-            Image(systemName: "waveform.path").font(.system(size: 27, weight: .medium)).foregroundStyle(.teal)
-                .frame(width: 48, height: 48).background(.teal.opacity(0.1), in: RoundedRectangle(cornerRadius: 15))
-                .accessibilityHidden(true)
+            BalanceLogo().frame(width: 54, height: 54)
             VStack(alignment: .leading, spacing: 3) {
-                Text("Equalizer").font(.system(size: 25, weight: .semibold, design: .rounded))
+                Text("BalanceEQ").font(.system(size: 25, weight: .semibold, design: .rounded))
                 Text("Your Mac. Your sound.").font(.subheadline).foregroundStyle(.secondary)
             }
             Spacer()
             HStack(spacing: 7) {
-                Circle().fill(audio.isRunning ? Color.teal : Color.secondary).frame(width: 7, height: 7)
+                Circle().fill(audio.isRunning ? Color.blue : Color.secondary).frame(width: 7, height: 7)
                 Text(audio.isStarting ? "STARTING" : (audio.isRunning ? (model.bypassed ? "BYPASSED" : "PROCESSING") : "READY"))
                     .font(.system(size: 10, weight: .semibold, design: .monospaced)).tracking(1.2)
             }.padding(.horizontal, 12).padding(.vertical, 9).modifier(ControlSurface())
@@ -60,7 +60,7 @@ struct EqualizerView: View {
             }.buttonStyle(.borderedProminent).controlSize(.large)
                 .disabled(audio.isStarting)
                 .help("Start or stop processing the normal system output")
-        }.padding(.horizontal, 26).padding(.vertical, 14)
+        }.padding(.horizontal, 22).padding(.top, 30).padding(.bottom, 10)
     }
 
     private var controls: some View {
@@ -128,7 +128,7 @@ struct EqualizerView: View {
                     }
                 }.padding(.bottom, 6)
             }
-            .scrollIndicators(.visible)
+            .scrollBounceBehavior(.basedOnSize)
         }
     }
 
@@ -158,15 +158,17 @@ struct EqualizerView: View {
             VStack(alignment: .leading, spacing: 5) {
                 Label(audio.status, systemImage: audio.isRunning ? "speaker.wave.2" : "info.circle")
                     .font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
-                Text("Audio stays on your Mac. Closing this window keeps EQ running.")
-                    .font(.caption2).foregroundStyle(.tertiary)
-                if let attribution = model.preset.attribution {
-                    Button("Profile credits") { showingCredits = true }
-                        .buttonStyle(.link).font(.caption2)
-                        .popover(isPresented: $showingCredits) {
-                            Text(attribution).font(.caption).textSelection(.enabled).padding(20).frame(width: 440)
-                        }
-                }
+                HStack(spacing: 10) {
+                    Text("Close this window to keep EQ running in the menu bar.")
+                        .foregroundStyle(.tertiary)
+                    if let attribution = model.preset.attribution {
+                        Button("Profile credits") { showingCredits = true }
+                            .buttonStyle(.link)
+                            .popover(isPresented: $showingCredits) {
+                                Text(attribution).font(.caption).textSelection(.enabled).padding(20).frame(width: 440)
+                            }
+                    }
+                }.font(.caption2)
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 5) {
@@ -278,9 +280,9 @@ private struct BandStrip: View {
             Toggle("Band enabled", isOn: $band.enabled).labelsHidden().toggleStyle(.checkbox)
                 .accessibilityLabel("Enable \(band.frequency, specifier: "%.0f") hertz band")
         }
-        .padding(.vertical, 12).frame(width: 82)
-        .background(selected ? Color.teal.opacity(0.09) : Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 14))
-        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(selected ? Color.teal.opacity(0.55) : Color.primary.opacity(0.06), lineWidth: 1))
+        .padding(.vertical, 12).frame(width: 80)
+        .background(selected ? Color.blue.opacity(0.09) : Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(selected ? Color.blue.opacity(0.55) : Color.primary.opacity(0.06), lineWidth: 1))
         .onTapGesture(perform: select)
     }
 }
@@ -379,8 +381,8 @@ private struct ResponseGraph: View, Equatable {
             var fill = curve
             fill.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
             fill.addLine(to: CGPoint(x: rect.minX, y: rect.maxY)); fill.closeSubpath()
-            context.fill(fill, with: .linearGradient(Gradient(colors: [.teal.opacity(0.18), .teal.opacity(0.01)]), startPoint: CGPoint(x: 0, y: rect.minY), endPoint: CGPoint(x: 0, y: rect.maxY)))
-            context.stroke(curve, with: .color(bypassed ? .secondary : .teal), style: StrokeStyle(lineWidth: 2.2, lineCap: .round, lineJoin: .round))
+            context.fill(fill, with: .linearGradient(Gradient(colors: [.blue.opacity(0.18), .blue.opacity(0.01)]), startPoint: CGPoint(x: 0, y: rect.minY), endPoint: CGPoint(x: 0, y: rect.maxY)))
+            context.stroke(curve, with: .color(bypassed ? .secondary : .blue), style: StrokeStyle(lineWidth: 2.2, lineCap: .round, lineJoin: .round))
         }
         .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 18))
         .overlay(alignment: .topLeading) {

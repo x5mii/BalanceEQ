@@ -1,5 +1,7 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
-# Equalizer for Mac
+# BalanceEQ
+
+<img src="Resources/BalanceEQ.png" alt="BalanceEQ logo" width="96">
 
 A native, free macOS equalizer inspired by the workflow of Equalizer APO and Peace. SwiftUI controls sit above a small C audio engine. There are no accounts, ads, subscriptions, telemetry, installed audio drivers, or third-party runtime packages.
 
@@ -12,24 +14,29 @@ The deployment target is macOS 14.2 or later, for Apple Silicon and Intel. Build
 ```sh
 ./scripts/check.sh
 ./scripts/build-app.sh
-open "build/Equalizer for Mac.app"
+open "build/BalanceEQ.app"
 ```
 
 The build script creates a universal `arm64` + `x86_64` app by default. For a faster local Apple Silicon build, run `ARCHITECTURES=arm64 ./scripts/build-app.sh`. Local builds are **ad-hoc signed**, without a Developer ID or notarization. They are developer builds, not the intended public download.
 
+For repeat development builds, `LOCAL_SIGNING_IDENTITY="your code-signing identity" ./scripts/build-app.sh` uses an existing persistent local certificate without a timestamp. Keep the same identity and bundle identifier between builds; ad-hoc signatures change with the executable and can cause macOS to ask for capture permission again. A public release still requires Developer ID signing and notarization. The app keeps its original `org.equalizerformac.app` identifier and `EqualizerForMac` data folder so the BalanceEQ rename preserves existing presets.
+
+The blue B/EQ artwork is generated from the shared native vector code: `xcrun swiftc Sources/EqualizerMac/Branding.swift scripts/generate-icon.swift -o .build/generate-icon`, then `.build/generate-icon` and `iconutil -c icns .build/BalanceEQ.iconset -o Resources/BalanceEQ.icns`.
+
 Device enumeration is available without starting capture or changing audio settings:
 
 ```sh
-"build/Equalizer for Mac.app/Contents/MacOS/EqualizerMac" --diagnose
+"build/BalanceEQ.app/Contents/MacOS/EqualizerMac" --diagnose
 ```
 
 ## Using the equalizer
 
 - Start with the ten-band Flat preset, then select a band to edit frequency, gain, Q, type, or enablement. Add or remove bands, up to 32. Types are peaking, low/high shelf, low/high pass, and notch. The response graph uses the playback engine's coefficients.
 - Double-click a band gain or preamp slider to reset it to 0 dB. Drag a band's frequency number up or right to increase it, down or left to decrease it. The fields below still accept exact values.
-- Choose **Start** to enable processing. macOS may request System Audio Recording permission. That permission permits the audio tap; this app processes samples in memory and does not save or upload recordings. It excludes its own playback and disables unused physical input streams.
+- Choose **Start** to enable processing. macOS may request System Audio Recording permission. That permission permits the audio tap; this app processes samples in memory and does not save or upload recordings. It excludes its own playback and disables unused physical input streams. macOS still shows its audio-capture privacy indicator during processing; that indicator is not another permission request. The app never resets permissions or tries to hide system privacy controls.
 - The app follows the macOS default output. Selecting **System output** changes that default. This version processes one physical stereo output with one supported 32-bit floating-point PCM stream. Virtual/aggregate outputs, multichannel processing, per-app routing, separately routed alerts, convolution, and protected-media guarantees are outside this version's scope.
-- **Bypass** transitions to the original signal, removing both filters and preamp while routing stays active. **Stop** and **Quit** release the tap and private aggregate device. Closing the window keeps processing active; reopen it or select presets from the menu bar. Processing starts only when you request it.
+- **Bypass** transitions to the original signal, removing both filters and preamp while routing stays active. **Stop** and **Quit** release the tap and private aggregate device. BalanceEQ lives in the menu bar, without a Dock icon. Closing the window keeps processing active; use the EQ icon to reopen it or select presets. Meter refreshes pause while the main window is hidden, and polling stops when processing stops. Processing starts only when you request it.
+- The audio callback processes incoming samples directly without an extra app audio queue. Startup requests a 128-frame I/O buffer (2.67 ms per buffer at 48 kHz), preserves smaller existing buffers, and falls back to the device-supported setting when necessary. The status shows the actual buffer size. Any propagated physical buffer change is restored on stop when no other client has changed it. This is a buffer duration, not a measured end-to-end delay; Bluetooth and device latency remain separate.
 - Output or sample-rate changes rebuild the route. Sleep pauses it; wake reconnects if processing was requested. Unsupported formats or processing errors stop the engine with a status message. Correct the cause and start again.
 - **Apply recommended headroom** estimates steady-state gain from the filter response. It is not a limiter or a guarantee against clipping. The peak meter measures samples before the final output boundary, where samples above digital full scale are hard-clipped to `[-1, 1]`; clipping is indicated.
 
@@ -83,6 +90,6 @@ SIGNING_IDENTITY="Developer ID Application: Your Name (TEAMID)" \
 NOTARY_PROFILE="your-notary-profile" ./scripts/notarize.sh
 ```
 
-The script reruns checks, builds both architectures, signs with the hardened runtime, submits to Apple, staples the ticket, checks Gatekeeper, and creates `build/Equalizer-for-Mac-0.1.0.zip` with a SHA-256 sidecar. It does not publish a GitHub release. The source and corresponding free signed binary should be published together only after the acceptance record is complete.
+The script reruns checks, builds both architectures, signs with the hardened runtime, submits to Apple, staples the ticket, checks Gatekeeper, and creates `build/BalanceEQ-0.1.0.zip` with a SHA-256 sidecar. It does not publish a GitHub release. The source and corresponding free signed binary should be published together only after the acceptance record is complete.
 
 The app code is licensed under [GNU GPL version 3 or any later version](LICENSE), without warranty. The bundled OPRA dataset remains separately licensed under CC BY-SA 4.0. Our releases are free; these licenses also permit paid redistribution subject to their terms. Equalizer APO and Peace are independent projects; this project is not affiliated with them. See [third-party notices](THIRD_PARTY_NOTICES.md) for catalog provenance and licenses.

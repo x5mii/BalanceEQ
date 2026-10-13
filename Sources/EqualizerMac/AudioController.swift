@@ -30,15 +30,15 @@ final class AudioController: ObservableObject {
         worker.publish = { [weak self] state in
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
-                self.outputs = state.outputs
-                self.selectedOutputID = state.selected
-                self.isRunning = state.running
+                if self.outputs != state.outputs { self.outputs = state.outputs }
+                if self.selectedOutputID != state.selected { self.selectedOutputID = state.selected }
+                if self.isRunning != state.running { self.isRunning = state.running }
                 if state.starting { self.startPending = false }
                 if !self.startPending { self.setStarting(state.starting) }
-                self.status = state.status
-                self.sampleRate = state.sampleRate
-                self.peakDB = state.peakDB
-                self.clipping = state.clipping
+                if self.status != state.status { self.status = state.status }
+                if self.sampleRate != state.sampleRate { self.sampleRate = state.sampleRate }
+                if self.peakDB != state.peakDB { self.peakDB = state.peakDB }
+                if self.clipping != state.clipping { self.clipping = state.clipping }
             }
         }
         worker.initialize()
@@ -66,6 +66,7 @@ final class AudioController: ObservableObject {
     func shutdown() { worker.shutdown() }
     func update(preset: EQPreset, bypassed: Bool) { worker.update(preset: preset, bypassed: bypassed) }
     func selectOutput(_ id: AudioDeviceID) { worker.selectOutput(id) }
+    func setMeteringEnabled(_ enabled: Bool) { worker.setMeteringEnabled(enabled) }
 
     private func setStarting(_ starting: Bool) {
         guard isStarting != starting else { return }
@@ -86,9 +87,10 @@ final class AudioController: ObservableObject {
             let devices = try HAL.outputs()
             let lines = try devices.map { output in
                 let rate = try HAL.sampleRate(output.id)
-                return "\(output.id == selected ? "*" : " ") \(output.name): \(Int(rate)) Hz (id \(output.id))"
+                return "\(output.id == selected ? "*" : " ") \(output.name): \(Int(rate)) Hz (id \(output.id))\n  \(HAL.bufferDiagnostics(output.id, sampleRate: rate))"
             }
-            return "Eligible stereo outputs (* = macOS default):\n" + lines.joined(separator: "\n")
+            return "Eligible stereo outputs (* = macOS default):\n" + lines.joined(separator: "\n") +
+                "\nBuffer durations and HAL-reported latency are not a measurement of added EQ latency."
         } catch { return "Audio diagnostics: \(error.localizedDescription)" }
     }
 
@@ -138,11 +140,33 @@ final class AudioController: ObservableObject {
         releaseControlQueue.signal()
         stalledWorker.queue.sync {} // Drain the queued, resource-free cleanup.
         stalledWorker.shutdown() // A repeated shutdown is a no-op.
+        AudioWorker.checkMeteringHandling()
+        precondition(HAL.preferredBufferFrames(current: 512, range: AudioValueRange(mMinimum: 15, mMaximum: 4096)) == 128)
+        precondition(HAL.preferredBufferFrames(current: 64, range: AudioValueRange(mMinimum: 15, mMaximum: 4096)) == 64)
+        precondition(HAL.preferredBufferFrames(current: 512, range: AudioValueRange(mMinimum: 256, mMaximum: 4096)) == 256)
+        precondition(HAL.preferredBufferFrames(current: 512, range: AudioValueRange(mMinimum: 15, mMaximum: 64)) == 64)
+        precondition(HAL.preferredBufferFrames(current: 512, range: AudioValueRange(mMinimum: 0, mMaximum: .infinity)) == nil)
+        var restore: (device: AudioDeviceID, original: UInt32, applied: UInt32, pending: Bool)? = (42, 512, 128, false)
+        precondition(HAL.restoreBuffer(&restore, read: { _ in 64 }, set: { _, _ in
+            preconditionFailure("Never overwrite another client's buffer change")
+        }) == nil && restore == nil)
+        restore = (42, 512, 128, false)
+        precondition(HAL.restoreBuffer(&restore, read: { _ in 128 }, set: { _, _ in -1 }) != nil && restore != nil)
+        precondition(HAL.restoreBuffer(&restore, read: { _ in 128 }, set: { _, _ in noErr }, pause: {}) != nil && restore != nil)
+        var reads = 0
+        precondition(HAL.restoreBuffer(&restore, read: { _ in reads += 1; return reads < 3 ? 128 : 512 }, set: { device, frames in
+            precondition(device == 42 && frames == 512)
+            return noErr
+        }, pause: {}) == nil && restore == nil && reads == 3)
+        restore = (42, 512, 128, true)
+        var restoredPending = false
+        precondition(HAL.restoreBuffer(&restore, read: { _ in 512 }, set: { _, _ in restoredPending = true; return noErr },
+                                      pause: {}) == nil && restoredPending && restore == nil)
     }
     #endif
 }
 
-private struct AudioState: Sendable {
+private struct AudioState: Equatable, Sendable {
     var outputs: [AudioOutput] = []
     var selected: AudioDeviceID = 0
     var running = false
@@ -158,6 +182,7 @@ private final class AudioWorker: @unchecked Sendable {
     let queue = DispatchQueue(label: "org.equalizermac.audio-control", qos: .userInitiated)
     var publish: ((AudioState) -> Void)?
     private var state = AudioState()
+    private var lastPublished: AudioState?
     private var preset: EQPreset?
     private var bypassed = false
     private var wantsRunning = false
@@ -171,9 +196,12 @@ private final class AudioWorker: @unchecked Sendable {
     private var context: OpaquePointer?
     private var route: AudioDeviceID = 0
     private var routeSignature = ""
+    private var bufferFrames: UInt32 = 0
+    private var bufferRestore: (device: AudioDeviceID, original: UInt32, applied: UInt32, pending: Bool)?
     private var listeners: [(AudioObjectID, AudioObjectPropertyAddress, AudioObjectPropertyListenerBlock)] = []
     private var routeListeners: [(AudioObjectID, AudioObjectPropertyAddress, AudioObjectPropertyListenerBlock)] = []
     private var meterTimer: DispatchSourceTimer?
+    private var meteringEnabled = false
     private var changeGeneration = 0
     private let shutdownLock = NSLock()
     private var shutdownRequested = false // Protected by shutdownLock; never read on the render thread.
@@ -185,17 +213,19 @@ private final class AudioWorker: @unchecked Sendable {
                 try self.listen(AudioObjectID(kAudioObjectSystemObject), kAudioHardwarePropertyDefaultOutputDevice)
                 try self.listen(AudioObjectID(kAudioObjectSystemObject), kAudioHardwarePropertyDevices)
                 try self.refreshOnQueue()
-                let timer = DispatchSource.makeTimerSource(queue: self.queue)
-                timer.schedule(deadline: .now() + .milliseconds(100), repeating: .milliseconds(100))
-                timer.setEventHandler { [weak self] in self?.poll() }
-                timer.resume()
-                self.meterTimer = timer
                 self.emit()
             } catch { self.fail(error) }
         }
     }
 
     func refresh() { queue.async { self.hardwareChanged() } }
+    func setMeteringEnabled(_ enabled: Bool) {
+        queue.async {
+            guard self.meteringEnabled != enabled else { return }
+            self.meteringEnabled = enabled
+            if enabled { self.poll() }
+        }
+    }
     func start(preset: EQPreset, bypassed: Bool) {
         queue.async {
             self.preset = preset
@@ -222,7 +252,7 @@ private final class AudioWorker: @unchecked Sendable {
                 guard eq_dsp_set_parameters(dsp, &parameters) else {
                     throw AudioFailure("The EQ settings are invalid for this output sample rate.")
                 }
-                self.state.status = bypassed ? "Bypassed. Original signal; routing remains active." : "Processing system audio."
+                self.state.status = self.processingStatus
                 self.emit()
             } catch { self.fail(error) }
         }
@@ -290,7 +320,15 @@ private final class AudioWorker: @unchecked Sendable {
         }
     }
 
-    private func emit() { publish?(state) }
+    private func emit() {
+        guard state != lastPublished else { return }
+        lastPublished = state
+        publish?(state)
+    }
+    private var processingStatus: String {
+        let text = bypassed ? "Bypassed. Original signal; routing remains active." : "Processing system audio."
+        return bufferFrames > 0 ? "\(text) · \(bufferFrames)-frame I/O" : text
+    }
     private func refreshOnQueue() throws {
         state.outputs = try HAL.outputs()
         state.selected = try HAL.defaultOutput()
@@ -308,6 +346,8 @@ private final class AudioWorker: @unchecked Sendable {
                 }
                 let signature = try HAL.signature(state.selected)
                 if route != state.selected || signature != routeSignature { restart(); return }
+                bufferFrames = (try? HAL.value(aggregate, kAudioDevicePropertyBufferFrameSize, initial: UInt32(0))) ?? bufferFrames
+                state.status = processingStatus
             }
             emit()
         } catch { fail(error) }
@@ -367,7 +407,7 @@ private final class AudioWorker: @unchecked Sendable {
             var parameters = try preset.parameters(sampleRate: rate, bypassed: bypassed)
             let process = try HAL.ownProcessObject()
             let description = CATapDescription(excludingProcesses: [process], deviceUID: outputUID, stream: 0)
-            description.name = "Equalizer for Mac"
+            description.name = "BalanceEQ"
             description.uuid = UUID()
             description.isPrivate = true
             description.muteBehavior = .mutedWhenTapped
@@ -378,7 +418,7 @@ private final class AudioWorker: @unchecked Sendable {
                 throw AudioFailure("The tap and output sample rates do not match.")
             }
             let composition: [String: Any] = [
-                kAudioAggregateDeviceNameKey: "Equalizer for Mac (Private)",
+                kAudioAggregateDeviceNameKey: "BalanceEQ (Private)",
                 kAudioAggregateDeviceUIDKey: "org.equalizermac.private.\(UUID().uuidString)",
                 kAudioAggregateDeviceIsPrivateKey: true,
                 kAudioAggregateDeviceIsStackedKey: false,
@@ -420,10 +460,13 @@ private final class AudioWorker: @unchecked Sendable {
                 throw AudioFailure("The audio route changed sample rate while starting. Start again to reconnect.")
             }
             let range = try HAL.value(aggregate, kAudioDevicePropertyBufferFrameSizeRange, initial: AudioValueRange())
-            guard range.mMaximum.isFinite, range.mMaximum >= 1, range.mMaximum <= 65536 else {
+            guard HAL.preferredBufferFrames(current: 128, range: range) != nil else {
                 throw AudioFailure("The output reports an unsupported audio buffer size.")
             }
-            let maxFrames = UInt32(range.mMaximum.rounded(.up))
+            bufferFrames = HAL.configureBuffer(aggregate: aggregate, output: output, range: range, restore: &bufferRestore)
+            let variableMaximum = (try? HAL.value(aggregate, kAudioDevicePropertyUsesVariableBufferFrameSizes, initial: UInt32(0))) ?? 0
+            guard variableMaximum <= 65536 else { throw AudioFailure("The output reports an unsupported variable audio buffer size.") }
+            let maxFrames = max(UInt32(range.mMaximum.rounded(.up)), variableMaximum)
             guard let newDSP = eq_dsp_create(rate, maxFrames) else { throw AudioFailure("Could not allocate the equalizer.") }
             dsp = newDSP
             guard eq_dsp_set_parameters(newDSP, &parameters) else { throw AudioFailure("The EQ settings are invalid.") }
@@ -438,6 +481,7 @@ private final class AudioWorker: @unchecked Sendable {
                 UInt32(physicalInputs.count), UInt32(inputStreams.count)), "Disable unused microphone inputs")
             callbackMayRun = true // Even a failed start must be stopped before its storage is reclaimed.
             try HAL.check(AudioDeviceStart(aggregate, proc), "Start system audio (check System Audio Recording permission)")
+            bufferFrames = (try? HAL.value(aggregate, kAudioDevicePropertyBufferFrameSize, initial: UInt32(0))) ?? bufferFrames
             route = output
             routeSignature = try HAL.signature(output)
             try listen(output, kAudioDevicePropertyNominalSampleRate, routeOnly: true)
@@ -447,22 +491,28 @@ private final class AudioWorker: @unchecked Sendable {
             try listen(output, kAudioDevicePropertyStreams, scope: kAudioObjectPropertyScopeInput, routeOnly: true)
             try listen(output, kAudioDevicePropertyStreamConfiguration, scope: kAudioObjectPropertyScopeInput, routeOnly: true)
             try listen(outputStreams[0], kAudioStreamPropertyVirtualFormat, routeOnly: true)
+            try listen(aggregate, kAudioDevicePropertyBufferFrameSize, routeOnly: true)
             state.running = true
+            startPolling()
             state.starting = false
             state.sampleRate = rate
-            state.status = bypassed ? "Bypassed. Original signal; routing remains active." : "Processing system audio."
+            state.status = processingStatus
             emit()
         } catch { fail(error) }
     }
 
     @discardableResult
     private func teardown() -> Bool {
+        meterTimer?.cancel()
+        meterTimer = nil
         removeListeners(&routeListeners)
         state.running = false
         state.starting = false
         state.peakDB = -120
         state.clipping = false
-        if let error = HAL.releaseRoute(aggregate: &aggregate, proc: &proc, tap: &tap, callbackMayRun: &callbackMayRun) {
+        let releaseError = HAL.releaseRoute(aggregate: &aggregate, proc: &proc, tap: &tap, callbackMayRun: &callbackMayRun)
+        let cleanupError = releaseError ?? HAL.restoreBuffer(&bufferRestore)
+        if let error = cleanupError {
             // Keep this one route's pointers alive. No new route may replace them until cleanup succeeds.
             cleanupBlocked = true
             wantsRunning = false
@@ -477,6 +527,7 @@ private final class AudioWorker: @unchecked Sendable {
         dsp = nil
         route = 0
         routeSignature = ""
+        bufferFrames = 0
         return true
     }
     private func fail(_ error: Error) {
@@ -485,16 +536,56 @@ private final class AudioWorker: @unchecked Sendable {
         emit()
     }
     private func poll() {
-        guard !cleanupBlocked, let dsp, let context else { return }
+        guard state.running, !cleanupBlocked, let dsp, let context else { return }
         let error = eq_audio_error(context)
         if error != 0 {
             fail(AudioFailure(String(cString: eq_audio_error_message(error))))
             return
         }
-        state.peakDB = max(-120, 20 * log10(max(1e-6, Double(eq_dsp_peak(dsp)))))
+        guard meteringEnabled else { return }
+        state.peakDB = (max(-120, 20 * log10(max(1e-6, Double(eq_dsp_peak(dsp))))) * 10).rounded() / 10
         state.clipping = eq_dsp_take_clipping(dsp)
         emit()
     }
+
+    private func startPolling() {
+        guard state.running, meterTimer == nil else { return }
+        let timer = DispatchSource.makeTimerSource(queue: queue)
+        timer.schedule(deadline: .now() + .milliseconds(100), repeating: .milliseconds(100),
+                       leeway: .milliseconds(10))
+        // Keep the cheap callback-error watchdog alive when hidden so failures restore native audio.
+        timer.setEventHandler { [weak self] in self?.poll() }
+        timer.resume()
+        meterTimer = timer
+    }
+
+    #if DEBUG
+    static func checkMeteringHandling() {
+        let worker = AudioWorker()
+        worker.queue.sync {
+            var emissions = 0
+            worker.publish = { _ in emissions += 1 }
+            worker.startPolling()
+            precondition(worker.meterTimer == nil, "Stopped audio must not schedule polling")
+            worker.dsp = eq_dsp_create(48000, 16)
+            worker.context = eq_audio_create(worker.dsp!, 0, 2, 16)
+            precondition(worker.dsp != nil && worker.context != nil)
+            worker.state.running = true
+            worker.startPolling()
+            precondition(worker.meterTimer != nil)
+            worker.poll()
+            precondition(emissions == 0, "A hidden window must not receive meter updates")
+            worker.meteringEnabled = true
+            worker.poll()
+            worker.poll()
+            precondition(emissions == 1, "An unchanged meter must not republish the audio state")
+            precondition(worker.teardown() && worker.meterTimer == nil)
+            worker.poll()
+            precondition(emissions == 1)
+        }
+        worker.shutdown()
+    }
+    #endif
 }
 
 private struct AudioFailure: LocalizedError {
@@ -582,6 +673,95 @@ private enum HAL {
     }
     static func sampleRate(_ device: AudioDeviceID) throws -> Double {
         try value(device, kAudioDevicePropertyNominalSampleRate, initial: Double(0))
+    }
+    static func preferredBufferFrames(current: UInt32, range: AudioValueRange) -> UInt32? {
+        guard range.mMinimum.isFinite, range.mMaximum.isFinite,
+              range.mMinimum >= 1, range.mMaximum <= 65536,
+              range.mMinimum.rounded(.up) <= range.mMaximum.rounded(.down) else { return nil }
+        let preferred = Double(current > 0 ? min(current, 128) : 128)
+        return UInt32(max(range.mMinimum.rounded(.up), min(preferred, range.mMaximum.rounded(.down))))
+    }
+    static func setBufferFrames(_ device: AudioDeviceID, _ frames: UInt32) -> OSStatus {
+        var frames = frames
+        var a = address(kAudioDevicePropertyBufferFrameSize)
+        return AudioObjectSetPropertyData(device, &a, 0, nil, UInt32(MemoryLayout<UInt32>.size), &frames)
+    }
+    static func configureBuffer(aggregate: AudioDeviceID, output: AudioDeviceID, range: AudioValueRange,
+        restore: inout (device: AudioDeviceID, original: UInt32, applied: UInt32, pending: Bool)?) -> UInt32 {
+        let current = (try? value(aggregate, kAudioDevicePropertyBufferFrameSize, initial: UInt32(0))) ?? 0
+        guard let requested = preferredBufferFrames(current: current, range: range), requested != current else { return current }
+        var a = address(kAudioDevicePropertyBufferFrameSize)
+        var settable: DarwinBoolean = false
+        guard AudioObjectIsPropertySettable(aggregate, &a, &settable) == noErr, settable.boolValue else { return current }
+        guard let previousPhysical = try? value(output, kAudioDevicePropertyBufferFrameSize, initial: UInt32(0)),
+              previousPhysical > 0 else { return current }
+        let result = setBufferFrames(aggregate, requested)
+        guard result == noErr else { return current }
+        // Some aggregate drivers share this setting with their physical subdevice.
+        if previousPhysical != requested {
+            restore = (output, previousPhysical, requested, true)
+        }
+        let actual = awaitBufferFrames(aggregate, expected: requested) ?? current
+        if restore != nil {
+            let physical = (try? value(output, kAudioDevicePropertyBufferFrameSize, initial: UInt32(0))) ?? previousPhysical
+            if physical == requested { restore = (output, previousPhysical, requested, false) }
+            else if actual != current, physical == actual {
+                restore = (output, previousPhysical, actual, false)
+            } // Otherwise keep the request tracked while propagation is pending.
+        }
+        return actual
+    }
+    private static func awaitBufferFrames(_ device: AudioDeviceID, expected: UInt32,
+        read: (AudioDeviceID) -> UInt32? = { try? value($0, kAudioDevicePropertyBufferFrameSize, initial: UInt32(0)) },
+        pause: () -> Void = { Thread.sleep(forTimeInterval: 0.02) }) -> UInt32? {
+        var observed: UInt32?
+        for _ in 0..<10 {
+            pause() // Core Audio property writes are asynchronous; this is never the render queue.
+            observed = read(device)
+            if observed == expected { break }
+        }
+        return observed
+    }
+    static func restoreBuffer(_ record: inout (device: AudioDeviceID, original: UInt32, applied: UInt32, pending: Bool)?,
+        read: (AudioDeviceID) -> UInt32? = { try? value($0, kAudioDevicePropertyBufferFrameSize, initial: UInt32(0)) },
+        set: (AudioDeviceID, UInt32) -> OSStatus = setBufferFrames,
+        pause: () -> Void = { Thread.sleep(forTimeInterval: 0.02) }) -> String? {
+        guard let saved = record else { return nil }
+        // A disconnected device or a later change by another client must not be overwritten.
+        let current = read(saved.device)
+        if current == saved.applied || (saved.pending && current == saved.original) {
+            let result = set(saved.device, saved.original)
+            guard result == noErr else { return "restore output buffer \(result)" }
+            guard awaitBufferFrames(saved.device, expected: saved.original, read: read, pause: pause) == saved.original else {
+                return "output buffer restoration is still pending"
+            }
+        }
+        record = nil
+        return nil
+    }
+    static func bufferDiagnostics(_ device: AudioDeviceID, sampleRate: Double) -> String {
+        var parts: [String] = []
+        if let frames = try? value(device, kAudioDevicePropertyBufferFrameSize, initial: UInt32(0)), sampleRate > 0 {
+            parts.append("I/O buffer \(frames) frames (\(String(format: "%.2f", Double(frames) * 1000 / sampleRate)) ms)")
+        }
+        if let range = try? value(device, kAudioDevicePropertyBufferFrameSizeRange, initial: AudioValueRange()),
+           range.mMinimum.isFinite, range.mMaximum.isFinite {
+            parts.append("supported buffer range \(range.mMinimum)–\(range.mMaximum) frames")
+        }
+        if let frames = try? value(device, kAudioDevicePropertyLatency, scope: kAudioObjectPropertyScopeOutput, initial: UInt32(0)) {
+            parts.append("device output latency \(frames) frames")
+        }
+        if let frames = try? value(device, kAudioDevicePropertySafetyOffset, scope: kAudioObjectPropertyScopeOutput, initial: UInt32(0)) {
+            parts.append("output safety offset \(frames) frames")
+        }
+        if let streams = try? ids(device, kAudioDevicePropertyStreams, scope: kAudioObjectPropertyScopeOutput) {
+            for stream in streams {
+                if let frames = try? value(stream, kAudioStreamPropertyLatency, initial: UInt32(0)) {
+                    parts.append("stream \(stream) latency \(frames) frames")
+                }
+            }
+        }
+        return parts.isEmpty ? "Buffer and latency properties unavailable." : parts.joined(separator: "; ")
     }
     static func format(_ stream: AudioStreamID) throws -> AudioStreamBasicDescription {
         try value(stream, kAudioStreamPropertyVirtualFormat, initial: AudioStreamBasicDescription())

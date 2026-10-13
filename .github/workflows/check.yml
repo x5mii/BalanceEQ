@@ -20,8 +20,8 @@ jobs:
       - run: ./scripts/check.sh
       - run: ./scripts/build-app.sh
       - name: Preserve the app bundle's executable permissions
-        run: ditto -c -k --keepParent "build/Equalizer for Mac.app" build/Equalizer-for-Mac-local.zip
+        run: ditto -c -k --keepParent "build/BalanceEQ.app" build/BalanceEQ-local.zip
       - uses: actions/upload-artifact@v4
         with:
           name: local-build-unnotarized
-          path: build/Equalizer-for-Mac-local.zip
+          path: build/BalanceEQ-local.zip

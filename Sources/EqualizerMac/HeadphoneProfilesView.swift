@@ -25,7 +25,7 @@ struct HeadphoneProfilesView: View {
         let results = matches
         VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 12) {
-                Image(systemName: "headphones").font(.system(size: 28)).foregroundStyle(.teal).accessibilityHidden(true)
+                Image(systemName: "headphones").font(.system(size: 28)).foregroundStyle(.blue).accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Headphone Profiles").font(.title2.bold())
                     Text("Find your exact model and choose a tuning. All included profiles work offline.")
@@ -95,7 +95,7 @@ struct HeadphoneProfilesView: View {
                 }.buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction).disabled(selected == nil)
             }
         }
-        .padding(24).frame(width: 640, height: 660).tint(.teal)
+        .padding(24).frame(width: 640, height: 660).tint(.blue)
         .task {
             do {
                 let loaded = try await Task.detached(priority: .userInitiated) { try HeadphoneCatalog.bundled() }.value

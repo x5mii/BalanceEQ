@@ -3,14 +3,16 @@
 <plist version="1.0"><dict>
     <key>CFBundleExecutable</key><string>EqualizerMac</string>
     <key>CFBundleIdentifier</key><string>org.equalizerformac.app</string>
-    <key>CFBundleName</key><string>Equalizer for Mac</string>
-    <key>CFBundleDisplayName</key><string>Equalizer for Mac</string>
+    <key>CFBundleName</key><string>BalanceEQ</string>
+    <key>CFBundleDisplayName</key><string>BalanceEQ</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleShortVersionString</key><string>0.1.0</string>
     <key>CFBundleVersion</key><string>1</string>
     <key>LSMinimumSystemVersion</key><string>14.2</string>
     <key>NSPrincipalClass</key><string>NSApplication</string>
     <key>NSHighResolutionCapable</key><true/>
-    <key>NSAudioCaptureUsageDescription</key><string>Equalizer for Mac processes audio playing through your system output to apply your equalizer. Audio stays on your Mac and is never recorded or uploaded.</string>
-    <key>NSHumanReadableCopyright</key><string>Copyright © 2026 Equalizer for Mac contributors. GNU GPL version 3.</string>
+    <key>LSUIElement</key><true/>
+    <key>CFBundleIconFile</key><string>BalanceEQ</string>
+    <key>NSAudioCaptureUsageDescription</key><string>BalanceEQ processes audio playing through your system output to apply your equalizer. Audio stays on your Mac and is never saved or uploaded.</string>
+    <key>NSHumanReadableCopyright</key><string>Copyright © 2026 BalanceEQ contributors. GNU GPL version 3.</string>
 </dict></plist>

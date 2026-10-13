@@ -98,7 +98,7 @@ public enum APOCodec {
     }
 
     public static func export(_ preset: EQPreset) -> String {
-        var lines = ["# Equalizer for Mac — supported Equalizer APO filters", "Preamp: \(preset.preampDB) dB"]
+        var lines = ["# BalanceEQ — supported Equalizer APO filters", "Preamp: \(preset.preampDB) dB"]
         if let attribution = preset.attribution { lines.insert("# Attribution: \(attribution)", at: 1) }
         for (index, band) in preset.bands.enumerated() {
             let type: String

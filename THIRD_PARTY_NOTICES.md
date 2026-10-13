@@ -1,6 +1,6 @@
 # Third-party notices
 
-Equalizer for Mac is licensed under GNU GPL version 3 or any later version.
+BalanceEQ is licensed under GNU GPL version 3 or any later version.
 See LICENSE for the full license. The app is provided without warranty.
 
 The app links to Apple's system frameworks (SwiftUI, AppKit, Core Audio,
