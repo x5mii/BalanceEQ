@@ -35,6 +35,13 @@ The full playback and distribution checkboxes below remain pending; the limited 
 - Analysis uses bounded 2,048-frame snapshots requested only on the visible live-audio tab, and Accelerate FFT on the control queue. It adds no playback queue. The graph cannot establish Harman target matching because raw headphone/target acoustic measurements are not bundled.
 - Preset state was compared with the pre-test copy; original tuning was restored. The app was left stopped, matching its state at the start of this session. No valid signing identity was available when rechecked. Notarization, clean installation, and the unresolved hardware matrix remain release prerequisites.
 
+## Smooth UI candidate — 2026-10-16
+
+- Version 1.0.0/build 3 passed all **22 Swift tests**, app self-checks, C callback and installer checks. Universal compilation and local ad-hoc signature verification passed. New checks compare batched response against the original playback-coefficient calculation at 44.1/48/96 kHz and cover silent/finite paths, peak-preserving display reduction, and visible/hidden polling cadence.
+- Core Animation interpolates fixed-topology curves; live analysis refreshes at 20 Hz only while visible. Separate observable meter/spectrum models avoid refreshing the entire editor. The analyzer's 128 logarithmic display buckets preserve peaks; 100 ms curve interpolation affects only visualization and settles to the exact final target even when successive audio frames are identical. Reduced motion disables interpolation. No DSP callback or playback queue was added.
+- Release-optimized local microbenchmark, 385 frequencies, 100 curves per run, median of five runs: ten bands **0.352 → 0.028 ms/curve (12.5×)**; 32 bands **0.858 → 0.080 ms/curve (10.7×)**. Both paths used identical parameters and checksummed outputs. This measures response computation, not frame rate, audio latency, or total app CPU.
+- Native UI inspection confirmed the enlarged graph, unified band panel, correct response orientation, and no vertical scrollbar at 950×768. Slider clicks changed gain, double-click reset to zero, and exact entry restored the original gain. FiiO K11 processing resumed at 48 kHz/128-frame I/O with live before/after traces. Saved preset JSON matched the pre-test copy exactly. Full frame-time profiling and the outstanding hardware/accessibility acceptance remain pending.
+
 ## Device and platform matrix
 
 ### Headphone profiles and control update — 2026-10-13

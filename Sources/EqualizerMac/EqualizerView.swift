@@ -37,11 +37,11 @@ struct EqualizerView: View {
                     }
                     if liveSpectrum {
                         SpectrumGraph(model: audio.spectrum, running: audio.isRunning)
-                            .frame(height: 152)
+                            .frame(height: 182)
                     } else {
                     ResponseGraph(preset: model.preset, sampleRate: audio.sampleRate > 0 ? audio.sampleRate : 48000, bypassed: model.bypassed)
                         .equatable()
-                        .frame(height: 152)
+                        .frame(height: 182)
                     }
                     bandSection
                     inspector
@@ -70,9 +70,9 @@ struct EqualizerView: View {
 
     private var header: some View {
         HStack(spacing: 14) {
-            BalanceLogo().frame(width: 54, height: 54)
+            BalanceLogo().frame(width: 48, height: 48)
             VStack(alignment: .leading, spacing: 3) {
-                Text("BalanceEQ").font(.system(size: 25, weight: .semibold, design: .rounded))
+                Text("BalanceEQ").font(.system(size: 23, weight: .semibold, design: .rounded))
                 Text("Your Mac. Your sound.").font(.subheadline).foregroundStyle(.secondary)
             }
             Spacer()
@@ -87,7 +87,7 @@ struct EqualizerView: View {
             }.modifier(PrimaryActionStyle()).controlSize(.large)
                 .disabled(audio.isStarting)
                 .help("Start or stop processing the normal system output")
-        }.padding(.horizontal, 22).padding(.top, 30).padding(.bottom, 10)
+        }.padding(.horizontal, 22).padding(.top, 28).padding(.bottom, 8)
     }
 
     private var controls: some View {
@@ -153,8 +153,9 @@ struct EqualizerView: View {
                             model.selectedBandID = band.id
                         }
                     }
-                }.padding(.bottom, 6)
+                }.padding(8)
             }
+            .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 18))
             .scrollBounceBehavior(.basedOnSize)
         }
     }
@@ -297,16 +298,18 @@ private struct BandStrip: View {
                 }
             NativeGainSlider(value: $band.gainDB, enabled: band.enabled && band.type.hasGain,
                              label: "\(Int(band.frequency)) hertz gain", range: -24...24, vertical: true)
-                .frame(width: 32, height: 100)
+                .frame(width: 32, height: 84)
             Text(band.type.hasGain ? String(format: "%+.1f", band.gainDB) : band.type.shortLabel)
                 .font(.system(size: 11, weight: .medium, design: .monospaced))
                 .foregroundStyle(band.enabled ? .primary : .tertiary)
             Toggle("Band enabled", isOn: $band.enabled).labelsHidden().toggleStyle(.checkbox)
                 .accessibilityLabel("Enable \(band.frequency, specifier: "%.0f") hertz band")
         }
-        .padding(.vertical, 12).frame(width: 80)
-        .background(selected ? Color.blue.opacity(0.09) : Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 14))
-        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(selected ? Color.blue.opacity(0.55) : Color.primary.opacity(0.06), lineWidth: 1))
+        .padding(.vertical, 10).frame(width: 80)
+        .background(selected ? Color.blue.opacity(0.07) : .clear, in: RoundedRectangle(cornerRadius: 12))
+        .overlay(alignment: .top) {
+            Capsule().fill(selected ? Color.blue : .clear).frame(width: 20, height: 3)
+        }
         .onTapGesture(perform: select)
     }
 }
@@ -322,14 +325,20 @@ private struct NativeGainSlider: NSViewRepresentable {
     func makeNSView(context: Context) -> NSSlider {
         let slider = ResettableGainSlider(value: value, minValue: range.lowerBound, maxValue: range.upperBound,
                               target: context.coordinator, action: #selector(Coordinator.changed(_:)))
+        if vertical { slider.cell = EQGainCell() }
+        slider.target = context.coordinator
+        slider.action = #selector(Coordinator.changed(_:))
         slider.isVertical = vertical
+        slider.minValue = range.lowerBound
+        slider.maxValue = range.upperBound
+        slider.doubleValue = value
         slider.isContinuous = true
         slider.toolTip = "Double-click to reset to 0 dB."
         return slider
     }
     func updateNSView(_ slider: NSSlider, context: Context) {
         context.coordinator.value = $value
-        slider.doubleValue = value
+        if slider.doubleValue != value { slider.doubleValue = value }
         slider.isEnabled = enabled
         slider.setAccessibilityLabel(label)
         slider.setAccessibilityValueDescription(String(format: "%.1f decibels", value))
@@ -339,6 +348,34 @@ private struct NativeGainSlider: NSViewRepresentable {
         var value: Binding<Double>
         init(value: Binding<Double>) { self.value = value }
         @objc func changed(_ slider: NSSlider) { value.wrappedValue = (slider.doubleValue * 10).rounded() / 10 }
+    }
+}
+
+/// Keep AppKit's tracking, keyboard and accessibility; only replace the vertical artwork.
+private final class EQGainCell: NSSliderCell {
+    override func drawBar(inside rect: NSRect, flipped: Bool) {
+        let rail = NSRect(x: rect.midX - 1.5, y: rect.minY, width: 3, height: rect.height)
+        NSColor.quaternaryLabelColor.setFill()
+        NSBezierPath(roundedRect: rail, xRadius: 1.5, yRadius: 1.5).fill()
+        let thumb = knobRect(flipped: flipped)
+        let center = rect.midY
+        let amount = NSRect(x: rail.minX, y: min(center, thumb.midY), width: 3, height: abs(center - thumb.midY))
+        (isEnabled ? NSColor.systemBlue : NSColor.tertiaryLabelColor).setFill()
+        NSBezierPath(roundedRect: amount, xRadius: 1.5, yRadius: 1.5).fill()
+        let zero = NSBezierPath()
+        zero.move(to: NSPoint(x: rect.midX - 7, y: center))
+        zero.line(to: NSPoint(x: rect.midX + 7, y: center))
+        NSColor.tertiaryLabelColor.withAlphaComponent(0.5).setStroke()
+        zero.lineWidth = 1
+        zero.stroke()
+    }
+    override func drawKnob(_ knobRect: NSRect) {
+        let circle = NSBezierPath(ovalIn: NSRect(x: knobRect.midX - 6, y: knobRect.midY - 6, width: 12, height: 12))
+        NSColor.controlBackgroundColor.setFill()
+        circle.fill()
+        (isEnabled ? NSColor.systemBlue : NSColor.tertiaryLabelColor).setStroke()
+        circle.lineWidth = 2
+        circle.stroke()
     }
 }
 
@@ -379,35 +416,12 @@ private struct ResponseGraph: View, Equatable {
     let sampleRate: Double
     let bypassed: Bool
     var body: some View {
-        Canvas { context, size in
-            let rect = CGRect(x: 40, y: 27, width: max(1, size.width - 62), height: max(1, size.height - 54))
-            let maxFrequency = min(20000.0, sampleRate * 0.49)
-            func x(_ f: Double) -> Double { rect.minX + log(f / 20) / log(maxFrequency / 20) * rect.width }
-            func y(_ db: Double) -> Double { rect.midY - max(-24, min(24, db)) / 48 * rect.height }
-            for db in [-24.0, -12, 0, 12, 24] {
-                var line = Path(); line.move(to: CGPoint(x: rect.minX, y: y(db))); line.addLine(to: CGPoint(x: rect.maxX, y: y(db)))
-                context.stroke(line, with: .color(.primary.opacity(db == 0 ? 0.18 : 0.07)), style: StrokeStyle(lineWidth: 1, dash: db == 0 ? [] : [3, 5]))
-                context.draw(Text("\(Int(db))").font(.system(size: 9, design: .monospaced)).foregroundStyle(.secondary), at: CGPoint(x: 21, y: y(db)))
-            }
-            for f in [20.0, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000] where f <= maxFrequency {
-                var line = Path(); line.move(to: CGPoint(x: x(f), y: rect.minY)); line.addLine(to: CGPoint(x: x(f), y: rect.maxY))
-                context.stroke(line, with: .color(.primary.opacity(0.055)))
-                let label = f >= 1000 ? "\(Int(f / 1000))k" : "\(Int(f))"
-                context.draw(Text(label).font(.system(size: 9, design: .monospaced)).foregroundStyle(.secondary), at: CGPoint(x: x(f), y: rect.maxY + 16))
-            }
-            var curve = Path()
-            for i in 0...384 {
-                let f = 20 * pow(maxFrequency / 20, Double(i) / 384)
-                let db = bypassed ? 0 : preset.responseDB(at: f, sampleRate: sampleRate)
-                let point = CGPoint(x: x(f), y: y(db.isFinite ? db : -24))
-                if i == 0 { curve.move(to: point) } else { curve.addLine(to: point) }
-            }
-            var fill = curve
-            fill.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
-            fill.addLine(to: CGPoint(x: rect.minX, y: rect.maxY)); fill.closeSubpath()
-            context.fill(fill, with: .linearGradient(Gradient(colors: [.blue.opacity(0.18), .blue.opacity(0.01)]), startPoint: CGPoint(x: 0, y: rect.minY), endPoint: CGPoint(x: 0, y: rect.maxY)))
-            context.stroke(curve, with: .color(bypassed ? .secondary : .blue), style: StrokeStyle(lineWidth: 2.2, lineCap: .round, lineJoin: .round))
-        }
+        let maximum = min(20_000, sampleRate * 0.49)
+        let frequencies = (0...384).map { 20 * pow(maximum / 20, Double($0) / 384) }
+        let values = bypassed ? frequencies.map { _ in 0.0 } : preset.responseDB(at: frequencies, sampleRate: sampleRate)
+        EQPlot(after: values, range: -24...24, muted: bypassed)
+            .padding(.leading, 40).padding(.trailing, 20).padding(.top, 32).padding(.bottom, 26)
+            .background(PlotGrid(range: -24...24, maximum: maximum).equatable())
         .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 18))
         .overlay(alignment: .topLeading) {
             Text(bypassed ? "BYPASSED · UNITY RESPONSE" : "EQ RESPONSE · dB")

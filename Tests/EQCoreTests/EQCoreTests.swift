@@ -2,6 +2,22 @@ import XCTest
 @testable import EQCore
 
 final class EQCoreTests: XCTestCase {
+    func testBatchedResponseMatchesPlaybackCoefficients() {
+        var preset = EQPreset.flat
+        preset.preampDB = -4.7
+        preset.bands = EQFilterType.allCases.map { EQBand(type: $0, frequency: 1000, gainDB: 4, q: 0.2) }
+        for rate in [44100.0, 48000, 96000] {
+            let frequencies = (0...384).map { 20 * pow(1000.0, Double($0) / 384) }
+            let curve = preset.responseDB(at: frequencies, sampleRate: rate)
+            for (frequency, value) in zip(frequencies, curve) {
+                XCTAssertEqual(value, preset.responseDB(at: frequency, sampleRate: rate), accuracy: 1e-8)
+            }
+        }
+        XCTAssertTrue(preset.responseDB(at: [0, .nan, 24000], sampleRate: 48000).allSatisfy(\.isNaN))
+        preset.bands[0].q = 0
+        XCTAssertTrue(preset.responseDB(at: [1000], sampleRate: 48000)[0].isNaN)
+    }
+
     func testProfileAttributionSurvivesStorageAndAPOExport() throws {
         var preset = EQPreset.flat
         preset.attribution = "Example creator via OPRA; CC BY-SA 4.0; https://github.com/opra-project/OPRA"

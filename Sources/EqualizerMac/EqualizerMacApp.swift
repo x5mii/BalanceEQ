@@ -24,6 +24,7 @@ enum EqualizerLauncher {
             EqualizerView.checkControlGestures()
             DecimalField.check()
             AudioSpectrum.check()
+            EQPlot.check()
             print("Core Audio teardown and control gesture checks passed.")
             return
         }
