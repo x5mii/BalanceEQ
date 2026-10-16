@@ -50,6 +50,76 @@ final class DSPTests: XCTestCase {
         EQBand(type: type, enabled: 1, frequency: frequency, gainDB: gain, q: q)
     }
 
+    func testAnalysisSnapshotOwnsCompleteStereoInputAndClippedOutput() {
+        let renderer = Renderer(capacity: 37) // Snapshot spans many callback chunks.
+        XCTAssertTrue(renderer.set(preamp: -6))
+        renderer.settle(rate: 48000)
+        let n = Int(EQ_ANALYSIS_FRAMES)
+        var snapshot = [Float](repeating: 99, count: 4 * n)
+        XCTAssertFalse(eq_dsp_read_analysis(renderer.dsp, &snapshot, UInt32(snapshot.count)))
+        eq_dsp_request_analysis(renderer.dsp)
+        _ = renderer.render([Float](repeating: 0.5, count: n - 1), right: [Float](repeating: -0.25, count: n - 1))
+        XCTAssertFalse(eq_dsp_read_analysis(renderer.dsp, &snapshot, UInt32(snapshot.count)))
+        XCTAssertEqual(snapshot[0], 99, "Never expose an incomplete snapshot")
+        _ = renderer.render([0.5], right: [-0.25])
+        eq_dsp_request_analysis(renderer.dsp) // A ready snapshot must not be overwritten.
+        _ = renderer.render([0.9])
+        XCTAssertFalse(eq_dsp_read_analysis(renderer.dsp, &snapshot, 1))
+        XCTAssertTrue(eq_dsp_read_analysis(renderer.dsp, &snapshot, UInt32(snapshot.count)))
+        XCTAssertTrue(snapshot[0..<n].allSatisfy { $0 == 0.5 })
+        XCTAssertTrue(snapshot[n..<2*n].allSatisfy { $0 == -0.25 })
+        let gain = Float(pow(10.0, -6.0 / 20.0))
+        XCTAssertTrue(snapshot[2*n..<3*n].allSatisfy { abs($0 - 0.5 * gain) < 1e-6 })
+        XCTAssertTrue(snapshot[3*n..<4*n].allSatisfy { abs($0 + 0.25 * gain) < 1e-6 })
+        XCTAssertFalse(eq_dsp_read_analysis(renderer.dsp, &snapshot, UInt32(snapshot.count)))
+        XCTAssertTrue(renderer.set(preamp: 12, bypass: true))
+        renderer.settle(rate: 48000)
+        eq_dsp_request_analysis(renderer.dsp)
+        var left = [Float](repeating: 2, count: n)
+        var right = [Float](repeating: -0.3, count: n)
+        left.withUnsafeMutableBufferPointer { l in
+            right.withUnsafeMutableBufferPointer { r in
+                eq_dsp_process(renderer.dsp, l.baseAddress, r.baseAddress, 1, l.baseAddress, r.baseAddress, 1, UInt32(n))
+            }
+        }
+        XCTAssertTrue(eq_dsp_read_analysis(renderer.dsp, &snapshot, UInt32(snapshot.count)))
+        XCTAssertEqual(snapshot[0], 2, "In-place processing must preserve the original input snapshot")
+        XCTAssertEqual(snapshot[2*n], 1, "Show final clipped output")
+        XCTAssertEqual(snapshot[3*n], -0.3, "Bypass must not apply preamp")
+    }
+
+    func testConcurrentAnalysisSnapshotsRemainConsistent() {
+        let renderer = Renderer()
+        let group = DispatchGroup()
+        var snapshot = [Float](repeating: 0, count: 4 * Int(EQ_ANALYSIS_FRAMES))
+        eq_dsp_request_analysis(renderer.dsp)
+        group.enter()
+        DispatchQueue.global().async {
+            defer { group.leave() }
+            for block in 0..<4096 {
+                let value = Float(block % 97) / 100
+                _ = renderer.render([Float](repeating: value, count: 256),
+                                    right: [Float](repeating: -value, count: 256))
+            }
+        }
+        var received = 0
+        while true {
+            let finished = group.wait(timeout: .now()) == .success
+            if eq_dsp_read_analysis(renderer.dsp, &snapshot, UInt32(snapshot.count)) {
+                received += 1
+                let n = Int(EQ_ANALYSIS_FRAMES)
+                for i in 0..<n {
+                    XCTAssertEqual(snapshot[i], snapshot[2*n+i])
+                    XCTAssertEqual(snapshot[n+i], snapshot[3*n+i])
+                    XCTAssertEqual(snapshot[i], -snapshot[n+i])
+                }
+            }
+            if finished { break }
+            eq_dsp_request_analysis(renderer.dsp)
+        }
+        XCTAssertGreaterThan(received, 0)
+    }
+
     func testFlatMonoStereoAndInterleavedAreExact() {
         let left: [Float] = [-1, -0.7, -0.1, 0, 0.2, 0.8, 1]
         let right = left.reversed().map { $0 }

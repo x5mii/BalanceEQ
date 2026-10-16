@@ -11,20 +11,42 @@ struct EqualizerView: View {
     @State private var showingPresets = false
     @State private var showingHeadphones = false
     @State private var showingCredits = false
+    @State private var liveSpectrum = false
+    @State private var showingGraphHelp = false
 
     var body: some View {
         VStack(spacing: 0) {
             header
             ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: 10) {
                     controls
+                    HStack {
+                        Picker("Graph", selection: $liveSpectrum) {
+                            Text("EQ response").tag(false)
+                            Text("Live audio").tag(true)
+                        }.pickerStyle(.segmented).labelsHidden().frame(width: 220)
+                        Spacer()
+                        Text(liveSpectrum ? "Before / after EQ · dBFS" : "Calculated filter response · dB")
+                            .font(.caption).foregroundStyle(.secondary)
+                        Button { showingGraphHelp = true } label: { Image(systemName: "info.circle") }
+                            .buttonStyle(.plain).accessibilityLabel("About the graphs and Harman targets")
+                            .popover(isPresented: $showingGraphHelp) {
+                                Text("EQ response shows calculated filter gain. Live audio shows actual digital samples before and after EQ. Harman-target profiles apply a headphone correction; verifying acoustic target matching requires compatible headphone measurements. The live spectrum cannot measure your headphones.")
+                                    .font(.callout).padding(20).frame(width: 360)
+                            }
+                    }
+                    if liveSpectrum {
+                        SpectrumGraph(spectrum: audio.spectrum, running: audio.isRunning)
+                            .frame(height: 152)
+                    } else {
                     ResponseGraph(preset: model.preset, sampleRate: audio.sampleRate > 0 ? audio.sampleRate : 48000, bypassed: model.bypassed)
                         .equatable()
-                        .frame(height: 174)
+                        .frame(height: 152)
+                    }
                     bandSection
                     inspector
                     footer
-                }.padding(.horizontal, 20).padding(.vertical, 16)
+                }.padding(.horizontal, 20).padding(.vertical, 12)
             }
             .scrollBounceBehavior(.basedOnSize)
         }
@@ -32,7 +54,12 @@ struct EqualizerView: View {
         .frame(minWidth: 930, minHeight: 740)
         .background(Color(nsColor: .windowBackgroundColor))
         .tint(.blue)
-        .onAppear { appDelegate.reopen = { openWindow(id: "equalizer") } }
+        .onAppear {
+            appDelegate.reopen = { openWindow(id: "equalizer") }
+            audio.setAnalysisEnabled(liveSpectrum)
+        }
+        .onDisappear { audio.setAnalysisEnabled(false) }
+        .onChange(of: liveSpectrum) { _, enabled in audio.setAnalysisEnabled(enabled) }
         .alert("BalanceEQ", isPresented: Binding(get: { model.message != nil }, set: { if !$0 { model.message = nil } })) {
             Button("OK") { model.message = nil }
         } message: { Text(model.message ?? "") }
@@ -53,11 +80,11 @@ struct EqualizerView: View {
                 Circle().fill(audio.isRunning ? Color.blue : Color.secondary).frame(width: 7, height: 7)
                 Text(audio.isStarting ? "STARTING" : (audio.isRunning ? (model.bypassed ? "BYPASSED" : "PROCESSING") : "READY"))
                     .font(.system(size: 10, weight: .semibold, design: .monospaced)).tracking(1.2)
-            }.padding(.horizontal, 12).padding(.vertical, 9).modifier(ControlSurface())
+            }.padding(.horizontal, 12).padding(.vertical, 9).background(Color(nsColor: .controlBackgroundColor), in: Capsule())
             Button(action: model.toggleProcessing) {
                 Label(audio.isStarting ? "Starting…" : (audio.isRunning ? "Stop" : "Start EQ"), systemImage: audio.isRunning ? "stop.fill" : "play.fill")
                     .frame(minWidth: 78)
-            }.buttonStyle(.borderedProminent).controlSize(.large)
+            }.modifier(PrimaryActionStyle()).controlSize(.large)
                 .disabled(audio.isStarting)
                 .help("Start or stop processing the normal system output")
         }.padding(.horizontal, 22).padding(.top, 30).padding(.bottom, 10)
@@ -97,9 +124,9 @@ struct EqualizerView: View {
                 HStack(spacing: 9) {
                     NativeGainSlider(value: $model.preset.preampDB, enabled: true, label: "Preamp gain",
                                      range: -60...12, vertical: false).frame(width: 108, height: 24)
-                    TextField("Preamp", value: $model.preset.preampDB, format: .number.precision(.fractionLength(1)))
+                    DecimalField(label: "Preamp in decibels", value: $model.preset.preampDB, range: -60...12)
                         .textFieldStyle(.roundedBorder).frame(width: 54).accessibilityLabel("Preamp in decibels")
-                    Text("dB").foregroundStyle(.secondary).font(.caption)
+                    Text("dB").foregroundStyle(.secondary).font(.caption).fixedSize()
                 }
             }
             Toggle("Bypass", isOn: $model.bypassed).toggleStyle(.switch).controlSize(.small)
@@ -141,15 +168,16 @@ struct EqualizerView: View {
                         ForEach(EQFilterType.allCases, id: \.self) { Text($0.label).tag($0) }
                     }.labelsHidden().frame(width: 138)
                 }
-                numericField("FREQUENCY", value: $model.preset.bands[index].frequency, unit: "Hz", width: 80)
-                numericField("GAIN", value: $model.preset.bands[index].gainDB, unit: "dB", width: 65)
+                numericField("FREQUENCY", value: $model.preset.bands[index].frequency, unit: "Hz", width: 80, range: 10...(audio.isRunning && !model.bypassed && model.preset.bands[index].enabled ? min(20_000, audio.sampleRate / 2 - 0.01) : 20_000))
+                numericField("GAIN", value: $model.preset.bands[index].gainDB, unit: "dB", width: 65, range: -24...24)
                     .disabled(!model.preset.bands[index].type.hasGain)
-                numericField("Q", value: $model.preset.bands[index].q, unit: "", width: 65)
+                numericField("Q", value: $model.preset.bands[index].q, unit: "", width: 65, range: 0.1...30)
                 Spacer()
                 Toggle("Enabled", isOn: $model.preset.bands[index].enabled).toggleStyle(.switch).controlSize(.small)
                 Button(role: .destructive, action: model.removeSelectedBand) { Image(systemName: "trash") }
                     .help("Remove selected band").accessibilityLabel("Remove selected band")
             }.padding(16).background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 16))
+                .id(model.selectedBandID)
         }
     }
 
@@ -216,13 +244,13 @@ struct EqualizerView: View {
         }.padding(24)
     }
 
-    private func numericField(_ label: String, value: Binding<Double>, unit: String, width: Double) -> some View {
+    private func numericField(_ label: String, value: Binding<Double>, unit: String, width: Double, range: ClosedRange<Double>) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             sectionLabel(label)
             HStack(spacing: 5) {
-                TextField(label, value: value, format: .number.precision(.fractionLength(0...2)))
+                DecimalField(label: "\(label) \(unit)", value: value, range: range)
                     .textFieldStyle(.roundedBorder).frame(width: width).accessibilityLabel("\(label) \(unit)")
-                Text(unit).font(.caption).foregroundStyle(.secondary)
+                Text(unit).font(.caption).foregroundStyle(.secondary).fixedSize()
             }
         }
     }
@@ -273,7 +301,7 @@ private struct BandStrip: View {
                 }
             NativeGainSlider(value: $band.gainDB, enabled: band.enabled && band.type.hasGain,
                              label: "\(Int(band.frequency)) hertz gain", range: -24...24, vertical: true)
-                .frame(width: 32, height: 112)
+                .frame(width: 32, height: 100)
             Text(band.type.hasGain ? String(format: "%+.1f", band.gainDB) : band.type.shortLabel)
                 .font(.system(size: 11, weight: .medium, design: .monospaced))
                 .foregroundStyle(band.enabled ? .primary : .tertiary)
@@ -395,13 +423,13 @@ private struct ResponseGraph: View, Equatable {
     }
 }
 
-private struct ControlSurface: ViewModifier {
+private struct PrimaryActionStyle: ViewModifier {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     func body(content: Content) -> some View {
         if #available(macOS 26.0, *), !reduceTransparency {
-            content.glassEffect(.regular, in: .capsule)
+            content.buttonStyle(.glassProminent)
         } else {
-            content.background(Color(nsColor: .controlBackgroundColor), in: Capsule())
+            content.buttonStyle(.borderedProminent)
         }
     }
 }

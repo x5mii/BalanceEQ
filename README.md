@@ -5,7 +5,7 @@
 
 A native, free macOS equalizer inspired by the workflow of Equalizer APO and Peace. SwiftUI controls sit above a small C audio engine. There are no accounts, ads, subscriptions, telemetry, installed audio drivers, or third-party runtime packages.
 
-**Development preview:** the source and local build are available in this checkout. A signed public release has not been produced. Hardware audio acceptance, macOS 14.2 compatibility, and Intel runtime testing remain pending; see [the acceptance record](docs/ACCEPTANCE.md). Building successfully does not establish those results.
+**1.0.0 release preparation:** the source and local build are available in this checkout. A signed public release has not been produced. See the [1.0.0 draft notes](docs/releases/1.0.0.md). Hardware audio acceptance, macOS 14.2 compatibility, and Intel runtime testing remain pending; see [the acceptance record](docs/ACCEPTANCE.md). Building successfully does not establish those results.
 
 ## Install with one command
 
@@ -48,6 +48,8 @@ Device enumeration is available without starting capture or changing audio setti
 ## Using the equalizer
 
 - Start with the ten-band Flat preset, then select a band to edit frequency, gain, Q, type, or enablement. Add or remove bands, up to 32. Types are peaking, low/high shelf, low/high pass, and notch. The response graph uses the playback engine's coefficients.
+- Numeric fields keep partial typing out of the live engine: enter `0.2` (or `0,2`) for Q and press Return or Tab to apply. Escape cancels; invalid numbers retain the previous setting and mark the field. This also applies to frequency, gain, and preamp.
+- **Live audio** shows the actual stereo spectrum before and after EQ, using separate dashed gray and blue traces. Analysis runs only while this view is selected and the window is visible; it adds no playback queue. The 2,048-sample Hann FFT has sample-rate-dependent resolution (23.44 Hz at 48 kHz). **EQ response** shows calculated filter gain. These are digital signals, not acoustic headphone measurements: a Harman-target profile cannot by itself prove your headphone matches the Harman curve. Raw headphone/target measurements are not included in the profile catalog.
 - Double-click a band gain or preamp slider to reset it to 0 dB. Drag a band's frequency number up or right to increase it, down or left to decrease it. The fields below still accept exact values.
 - Choose **Start** to enable processing. macOS may request System Audio Recording permission. That permission permits the audio tap; this app processes samples in memory and does not save or upload recordings. It excludes its own playback and disables unused physical input streams. macOS still shows its audio-capture privacy indicator during processing; that indicator is not another permission request. The app never resets permissions or tries to hide system privacy controls.
 - The app follows the macOS default output. Selecting **System output** changes that default. This version processes one physical stereo output with one supported 32-bit floating-point PCM stream. Virtual/aggregate outputs, multichannel processing, per-app routing, separately routed alerts, convolution, and protected-media guarantees are outside this version's scope.
@@ -57,7 +59,7 @@ Device enumeration is available without starting capture or changing audio setti
 - Output or sample-rate changes rebuild the route. Sleep pauses it; wake reconnects if processing was requested. Unsupported formats or processing errors stop the engine with a status message. Correct the cause and start again.
 - **Apply recommended headroom** estimates steady-state gain from the filter response. It is not a limiter or a guarantee against clipping. The peak meter measures samples before the final output boundary, where samples above digital full scale are hard-clipped to `[-1, 1]`; clipping is indicated.
 
-The UI follows light/dark appearance, uses native Liquid Glass on macOS 26+, and supplies standard-material and reduced-transparency fallbacks. Native controls have keyboard operation and accessibility labels. There are no decorative motion effects; VoiceOver and accessibility acceptance still require the checks below.
+The UI follows light/dark appearance, uses native Liquid Glass for its primary action on macOS 26+ and solid surfaces for graphs and editing, and supplies standard-material and reduced-transparency fallbacks. Native controls have keyboard operation and accessibility labels. There are no decorative motion effects; VoiceOver and accessibility acceptance still require the checks below.
 
 | Setting | Accepted range |
 | --- | --- |

@@ -20,6 +20,7 @@ final class AudioController: ObservableObject {
     @Published private(set) var sampleRate = 48000.0
     @Published private(set) var peakDB = -120.0
     @Published private(set) var clipping = false
+    @Published private(set) var spectrum = Spectrum()
 
     private let worker = AudioWorker()
     private var workspaceObservers: [NSObjectProtocol] = []
@@ -39,6 +40,7 @@ final class AudioController: ObservableObject {
                 if self.sampleRate != state.sampleRate { self.sampleRate = state.sampleRate }
                 if self.peakDB != state.peakDB { self.peakDB = state.peakDB }
                 if self.clipping != state.clipping { self.clipping = state.clipping }
+                if self.spectrum != state.spectrum { self.spectrum = state.spectrum }
             }
         }
         worker.initialize()
@@ -67,6 +69,7 @@ final class AudioController: ObservableObject {
     func update(preset: EQPreset, bypassed: Bool) { worker.update(preset: preset, bypassed: bypassed) }
     func selectOutput(_ id: AudioDeviceID) { worker.selectOutput(id) }
     func setMeteringEnabled(_ enabled: Bool) { worker.setMeteringEnabled(enabled) }
+    func setAnalysisEnabled(_ enabled: Bool) { worker.setAnalysisEnabled(enabled) }
 
     private func setStarting(_ starting: Bool) {
         guard isStarting != starting else { return }
@@ -177,6 +180,7 @@ private struct AudioState: Equatable, Sendable {
     var sampleRate = 48000.0
     var peakDB = -120.0
     var clipping = false
+    var spectrum = Spectrum()
 }
 
 // All HAL objects and DSP ownership stay on this queue; the render path is C only.
@@ -205,6 +209,8 @@ private final class AudioWorker: @unchecked Sendable {
     private var routeListeners: [(AudioObjectID, AudioObjectPropertyAddress, AudioObjectPropertyListenerBlock)] = []
     private var meterTimer: DispatchSourceTimer?
     private var meteringEnabled = false
+    private var analysisEnabled = false
+    private var analyzer: AudioSpectrum?
     private var changeGeneration = 0
     private let shutdownLock = NSLock()
     private var shutdownRequested = false // Protected by shutdownLock; never read on the render thread.
@@ -226,7 +232,16 @@ private final class AudioWorker: @unchecked Sendable {
         queue.async {
             guard self.meteringEnabled != enabled else { return }
             self.meteringEnabled = enabled
+            if let dsp = self.dsp { self.analyzer?.discard(dsp) }
             if enabled { self.poll() }
+        }
+    }
+    func setAnalysisEnabled(_ enabled: Bool) {
+        queue.async {
+            self.analysisEnabled = enabled
+            if let dsp = self.dsp { self.analyzer?.discard(dsp) }
+            self.state.spectrum = Spectrum()
+            self.emit()
         }
     }
     func start(preset: EQPreset, bypassed: Bool) {
@@ -539,6 +554,8 @@ private final class AudioWorker: @unchecked Sendable {
         state.starting = false
         state.peakDB = -120
         state.clipping = false
+        state.spectrum = Spectrum()
+        analyzer = nil
         let releaseError = HAL.releaseRoute(aggregate: &aggregate, proc: &proc, tap: &tap, callbackMayRun: &callbackMayRun)
         let cleanupError = releaseError ?? HAL.restoreBuffer(&bufferRestore)
         if let error = cleanupError {
@@ -573,6 +590,10 @@ private final class AudioWorker: @unchecked Sendable {
             return
         }
         guard meteringEnabled else { return }
+        if analysisEnabled {
+            if analyzer == nil { analyzer = AudioSpectrum() }
+            if let spectrum = analyzer?.read(dsp, sampleRate: state.sampleRate) { state.spectrum = spectrum }
+        }
         state.peakDB = (max(-120, 20 * log10(max(1e-6, Double(eq_dsp_peak(dsp))))) * 10).rounded() / 10
         state.clipping = eq_dsp_take_clipping(dsp)
         emit()

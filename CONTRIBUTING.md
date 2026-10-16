@@ -18,6 +18,8 @@ The first command runs the Swift tests, Core Audio teardown fault-injection chec
 
 - `Sources/EqualizerMac`: SwiftUI UI, app/menu lifecycle, and the serial Core Audio control queue. The controller owns device listeners, the process tap, private aggregate device, and engine lifetime.
 - `Sources/EQCore`: validated preset data, the strict APO codec, and atomic local persistence. Changes to imported syntax must include rejection and round-trip tests.
+- `Sources/EqualizerMac/DecimalField.swift`: draft text commits on Return/focus change; never publish partial numeric input to the engine.
+- `Sources/EqualizerMac/AudioSpectrum.swift`: Accelerate FFT on the control queue. The C engine hands over bounded stereo snapshots through atomic ownership; never move analysis into the audio callback.
 - `Sources/CEQ`: C-only render callback and double-precision biquad DSP. Coefficients are prepared outside the callback. A lock-free triple buffer transfers the latest parameters; complete filter banks crossfade over 20 ms.
 
 The render callback must not allocate memory, block, lock, log, call Swift, or access files. Keep publication to one serial producer and rendering to one consumer. Stop the audio callback before destroying its context or DSP. UI response and audio playback must use the same coefficient implementation. Preserve strict finite/range checks and the existing parameter bounds.

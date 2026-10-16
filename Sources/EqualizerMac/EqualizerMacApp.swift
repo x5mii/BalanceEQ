@@ -22,6 +22,8 @@ enum EqualizerLauncher {
         if CommandLine.arguments.contains("--self-test") {
             AudioController.checkCleanupHandling()
             EqualizerView.checkControlGestures()
+            DecimalField.check()
+            AudioSpectrum.check()
             print("Core Audio teardown and control gesture checks passed.")
             return
         }
@@ -71,7 +73,7 @@ struct EqualizerMacApp: App {
             VStack(spacing: 16) {
                 BalanceLogo().frame(width: 64, height: 64)
                 Text("BalanceEQ").font(.title2.bold())
-                Text("0.1.0 · Free and open source").foregroundStyle(.secondary)
+                Text("\(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Development") · Free and open source").foregroundStyle(.secondary)
                 Text("System-wide sound, shaped by you.")
                 Text("Copyright © 2026 BalanceEQ contributors.\nLicensed under GNU GPL version 3 or later.\nProvided without warranty. You may redistribute and modify this software under the license terms.")
                     .font(.caption).multilineTextAlignment(.center).foregroundStyle(.secondary)

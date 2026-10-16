@@ -10,6 +10,7 @@ extern "C" {
 #endif
 
 enum {
+    EQ_ANALYSIS_FRAMES = 2048,
     EQ_MAX_BANDS = 32,
     EQ_PEAK = 0,
     EQ_LOW_SHELF = 1,
@@ -64,6 +65,12 @@ bool eq_dsp_set_parameters(EQDSP *dsp, const EQParameters *parameters);
 void eq_dsp_process(EQDSP *dsp, const float *inL, const float *inR,
                     uint32_t inStride, float *outL, float *outR,
                     uint32_t outStride, uint32_t frames);
+
+// One serial control consumer requests/reads a bounded snapshot. Four planar channels:
+// input L/R, final clipped output L/R. No FFT or allocation occurs on the render thread.
+// Read requires capacity >= 4 * EQ_ANALYSIS_FRAMES floats; false means not ready.
+void eq_dsp_request_analysis(EQDSP *dsp);
+bool eq_dsp_read_analysis(EQDSP *dsp, float *channels, uint32_t capacity);
 
 // Latest block's peak before final clipping (linear amplitude). Safe atomic polls.
 float eq_dsp_peak(EQDSP *dsp);

@@ -26,6 +26,15 @@ The following checks used the local 0.1.0 candidate on 2026-10-13. Measurements 
 
 The full playback and distribution checkboxes below remain pending; the limited observations above do not satisfy an entire checklist item.
 
+## 1.0.0 candidate update — 2026-10-16
+
+- Version 1.0.0/build 2, universal arm64/x86_64 with macOS 14.2 minimum, ad-hoc signed on the same Apple Silicon/macOS 27.0.1 development host. This is preparation, not approval for a public stable release.
+- All **21 Swift tests** passed, plus the app self-checks, C callback harness, installer checks, plist and whitespace checks. New coverage includes bounded four-channel snapshots across callback chunks, in-place processing, final clipping, bypass, concurrent snapshot ownership, decimal/comma input boundaries, and FFT levels with opposite-phase stereo at 44.1/48/96 kHz.
+- Actual keyboard entry accepted `0` followed by `.2` in Q with no interruption; Return committed 0.2. Invalid `0` on Tab retained 0.2 and marked the field without a modal alert. `0,71` restored the original value; Escape cancelled a later draft. The final compact UI showed the graph, all ten bands, inspector, and footer in the saved window without a vertical scrollbar; preamp units no longer wrapped. Primary-action glass follows native styling while graph/editor/status surfaces are opaque. Full VoiceOver and appearance testing remains pending.
+- After the user allowed audio access and the app was restarted, live analysis ran on FiiO K11 at 48 kHz/128-frame I/O. A synthetic stereo 1 kHz tone at amplitude 0.005 showed approximately −46 dBFS before EQ and −51 dBFS after the DT990 preset; the output meter read −50.6 dBFS. Bypass made both spectrum peaks approximately −46 dBFS, with output meter −46.1 dBFS. These are digital observations, not measured acoustic response or added latency.
+- Analysis uses bounded 2,048-frame snapshots requested only on the visible live-audio tab, and Accelerate FFT on the control queue. It adds no playback queue. The graph cannot establish Harman target matching because raw headphone/target acoustic measurements are not bundled.
+- Preset state was compared with the pre-test copy; original tuning was restored. The app was left stopped, matching its state at the start of this session. No valid signing identity was available when rechecked. Notarization, clean installation, and the unresolved hardware matrix remain release prerequisites.
+
 ## Device and platform matrix
 
 ### Headphone profiles and control update — 2026-10-13

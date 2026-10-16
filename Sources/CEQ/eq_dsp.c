@@ -33,6 +33,9 @@ struct EQDSP {
     atomic_uint middleSlot;
     atomic_uint peakBits, clipping;
     float *scratch[2];
+    atomic_uint analysisState; // 0 idle, 1 render owns storage, 2 control owns storage.
+    uint32_t analysisPosition; // Render thread only.
+    float analysis[4][EQ_ANALYSIS_FRAMES];
 };
 
 enum { DIRTY = 4, SLOT_MASK = 3 };
@@ -138,6 +141,7 @@ EQDSP *eq_dsp_create(double sampleRate, uint32_t maxFrames) {
     atomic_init(&dsp->middleSlot, 2);
     atomic_init(&dsp->peakBits, 0);
     atomic_init(&dsp->clipping, 0);
+    atomic_init(&dsp->analysisState, 0);
     return dsp;
 }
 
@@ -231,6 +235,7 @@ void eq_dsp_process(EQDSP *dsp, const float *inL, const float *inR,
                     uint32_t outStride, uint32_t frames) {
     if (!dsp || !outL || !outR || !inStride || !outStride || !frames) return;
     receive_parameters(dsp);
+    bool analyzing = atomic_load_explicit(&dsp->analysisState, memory_order_acquire) == 1;
     float peak = 0;
     bool fault = false;
     const float lower = -1, upper = 1;
@@ -251,6 +256,15 @@ void eq_dsp_process(EQDSP *dsp, const float *inL, const float *inR,
                 }
                 if (!isfinite(y)) { y = 0; fault = true; }
                 dsp->scratch[ch][frame] = (float)fmax(-FLT_MAX, fmin(FLT_MAX, y));
+                if (analyzing) {
+                    dsp->analysis[ch][dsp->analysisPosition] = (float)input[ch];
+                    dsp->analysis[ch + 2][dsp->analysisPosition] = fmaxf(-1, fminf(1, dsp->scratch[ch][frame]));
+                }
+            }
+            if (analyzing && ++dsp->analysisPosition == EQ_ANALYSIS_FRAMES) {
+                dsp->analysisPosition = 0;
+                atomic_store_explicit(&dsp->analysisState, 2, memory_order_release);
+                analyzing = false;
             }
             if (dsp->fading && ++dsp->fadePosition >= dsp->fadeFrames) {
                 dsp->activeBank = 1 - dsp->activeBank;
@@ -282,4 +296,19 @@ float eq_dsp_peak(EQDSP *dsp) {
 
 bool eq_dsp_take_clipping(EQDSP *dsp) {
     return dsp && atomic_exchange_explicit(&dsp->clipping, 0, memory_order_relaxed) != 0;
+}
+
+void eq_dsp_request_analysis(EQDSP *dsp) {
+    if (!dsp) return;
+    unsigned expected = 0;
+    atomic_compare_exchange_strong_explicit(&dsp->analysisState, &expected, 1,
+                                            memory_order_release, memory_order_relaxed);
+}
+
+bool eq_dsp_read_analysis(EQDSP *dsp, float *channels, uint32_t capacity) {
+    if (!dsp || !channels || capacity < 4 * EQ_ANALYSIS_FRAMES ||
+        atomic_load_explicit(&dsp->analysisState, memory_order_acquire) != 2) return false;
+    memcpy(channels, dsp->analysis, sizeof(dsp->analysis));
+    atomic_store_explicit(&dsp->analysisState, 0, memory_order_release);
+    return true;
 }
