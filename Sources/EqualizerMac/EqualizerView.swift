@@ -36,7 +36,7 @@ struct EqualizerView: View {
                             }
                     }
                     if liveSpectrum {
-                        SpectrumGraph(spectrum: audio.spectrum, running: audio.isRunning)
+                        SpectrumGraph(model: audio.spectrum, running: audio.isRunning)
                             .frame(height: 152)
                     } else {
                     ResponseGraph(preset: model.preset, sampleRate: audio.sampleRate > 0 ? audio.sampleRate : 48000, bypassed: model.bypassed)
@@ -200,11 +200,7 @@ struct EqualizerView: View {
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 5) {
-                HStack(spacing: 10) {
-                    Text(audio.isRunning ? String(format: "%.1f kHz", audio.sampleRate / 1000) : "— kHz")
-                    Text(audio.isRunning && audio.peakDB.isFinite ? String(format: "Peak %.1f dBFS", audio.peakDB) : "Peak —")
-                    if audio.clipping { Label("Clipping", systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange) }
-                }.font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                OutputLevels(levels: audio.levels, running: audio.isRunning, sampleRate: audio.sampleRate)
                 Button("Apply recommended headroom") {
                     let gain = model.preset.recommendedPreamp(sampleRate: audio.sampleRate > 0 ? audio.sampleRate : 48000)
                     if gain.isFinite { model.preset.preampDB = gain }
@@ -454,4 +450,17 @@ private extension EQFilterType {
         }
     }
     var hasGain: Bool { self == .peak || self == .lowShelf || self == .highShelf }
+}
+
+private struct OutputLevels: View {
+    @ObservedObject var levels: AudioLevels
+    let running: Bool
+    let sampleRate: Double
+    var body: some View {
+        HStack(spacing: 10) {
+            Text(running ? String(format: "%.1f kHz", sampleRate / 1000) : "— kHz")
+            Text(running ? String(format: "Peak %.1f dBFS", levels.peakDB) : "Peak —")
+            if levels.clipping { Label("Clipping", systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange) }
+        }.font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+    }
 }

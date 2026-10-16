@@ -11,6 +11,12 @@ struct AudioOutput: Identifiable, Equatable, Sendable {
 }
 
 @MainActor
+final class AudioLevels: ObservableObject {
+    @Published var peakDB = -120.0
+    @Published var clipping = false
+}
+
+@MainActor
 final class AudioController: ObservableObject {
     @Published private(set) var outputs: [AudioOutput] = []
     @Published private(set) var selectedOutputID: AudioDeviceID = 0
@@ -18,9 +24,8 @@ final class AudioController: ObservableObject {
     @Published private(set) var isStarting = false
     @Published private(set) var status = "Ready. Start to enable system-wide EQ."
     @Published private(set) var sampleRate = 48000.0
-    @Published private(set) var peakDB = -120.0
-    @Published private(set) var clipping = false
-    @Published private(set) var spectrum = Spectrum()
+    let levels = AudioLevels()
+    let spectrum = SpectrumModel()
 
     private let worker = AudioWorker()
     private var workspaceObservers: [NSObjectProtocol] = []
@@ -38,10 +43,12 @@ final class AudioController: ObservableObject {
                 if !self.startPending { self.setStarting(state.starting) }
                 if self.status != state.status { self.status = state.status }
                 if self.sampleRate != state.sampleRate { self.sampleRate = state.sampleRate }
-                if self.peakDB != state.peakDB { self.peakDB = state.peakDB }
-                if self.clipping != state.clipping { self.clipping = state.clipping }
-                if self.spectrum != state.spectrum { self.spectrum = state.spectrum }
+                if self.levels.peakDB != state.peakDB { self.levels.peakDB = state.peakDB }
+                if self.levels.clipping != state.clipping { self.levels.clipping = state.clipping }
             }
+        }
+        worker.publishSpectrum = { [weak spectrum] frame in
+            DispatchQueue.main.async { spectrum?.frame = frame }
         }
         worker.initialize()
         let center = NSWorkspace.shared.notificationCenter
@@ -180,13 +187,13 @@ private struct AudioState: Equatable, Sendable {
     var sampleRate = 48000.0
     var peakDB = -120.0
     var clipping = false
-    var spectrum = Spectrum()
 }
 
 // All HAL objects and DSP ownership stay on this queue; the render path is C only.
 private final class AudioWorker: @unchecked Sendable {
     let queue = DispatchQueue(label: "org.equalizermac.audio-control", qos: .userInitiated)
     var publish: ((AudioState) -> Void)?
+    var publishSpectrum: ((Spectrum) -> Void)?
     private var state = AudioState()
     private var lastPublished: AudioState?
     private var preset: EQPreset?
@@ -232,6 +239,7 @@ private final class AudioWorker: @unchecked Sendable {
         queue.async {
             guard self.meteringEnabled != enabled else { return }
             self.meteringEnabled = enabled
+            self.schedulePolling()
             if let dsp = self.dsp { self.analyzer?.discard(dsp) }
             if enabled { self.poll() }
         }
@@ -239,8 +247,9 @@ private final class AudioWorker: @unchecked Sendable {
     func setAnalysisEnabled(_ enabled: Bool) {
         queue.async {
             self.analysisEnabled = enabled
+            self.schedulePolling()
             if let dsp = self.dsp { self.analyzer?.discard(dsp) }
-            self.state.spectrum = Spectrum()
+            self.publishSpectrum?(Spectrum())
             self.emit()
         }
     }
@@ -330,6 +339,7 @@ private final class AudioWorker: @unchecked Sendable {
             meterTimer?.cancel()
             meterTimer = nil
             publish = nil
+            publishSpectrum = nil
         }
         // A permission dialog or stalled HAL server must not trap application termination.
         // The queued closure retains all resources; only its confirmed teardown may free them.
@@ -554,7 +564,7 @@ private final class AudioWorker: @unchecked Sendable {
         state.starting = false
         state.peakDB = -120
         state.clipping = false
-        state.spectrum = Spectrum()
+        publishSpectrum?(Spectrum())
         analyzer = nil
         let releaseError = HAL.releaseRoute(aggregate: &aggregate, proc: &proc, tap: &tap, callbackMayRun: &callbackMayRun)
         let cleanupError = releaseError ?? HAL.restoreBuffer(&bufferRestore)
@@ -592,7 +602,7 @@ private final class AudioWorker: @unchecked Sendable {
         guard meteringEnabled else { return }
         if analysisEnabled {
             if analyzer == nil { analyzer = AudioSpectrum() }
-            if let spectrum = analyzer?.read(dsp, sampleRate: state.sampleRate) { state.spectrum = spectrum }
+            if let spectrum = analyzer?.read(dsp, sampleRate: state.sampleRate) { publishSpectrum?(spectrum) }
         }
         state.peakDB = (max(-120, 20 * log10(max(1e-6, Double(eq_dsp_peak(dsp))))) * 10).rounded() / 10
         state.clipping = eq_dsp_take_clipping(dsp)
@@ -602,16 +612,28 @@ private final class AudioWorker: @unchecked Sendable {
     private func startPolling() {
         guard state.running, meterTimer == nil else { return }
         let timer = DispatchSource.makeTimerSource(queue: queue)
-        timer.schedule(deadline: .now() + .milliseconds(100), repeating: .milliseconds(100),
-                       leeway: .milliseconds(10))
         // Keep the cheap callback-error watchdog alive when hidden so failures restore native audio.
         timer.setEventHandler { [weak self] in self?.poll() }
         timer.resume()
         meterTimer = timer
+        schedulePolling()
+    }
+
+    private func schedulePolling() {
+        let interval = Self.pollInterval(visible: meteringEnabled, analyzing: analysisEnabled)
+        meterTimer?.schedule(deadline: .now() + .milliseconds(interval), repeating: .milliseconds(interval),
+                             leeway: .milliseconds(5))
+    }
+
+    private static func pollInterval(visible: Bool, analyzing: Bool) -> Int {
+        visible && analyzing ? 50 : 100
     }
 
     #if DEBUG
     static func checkMeteringHandling() {
+        precondition(pollInterval(visible: true, analyzing: true) == 50)
+        precondition(pollInterval(visible: false, analyzing: true) == 100)
+        precondition(pollInterval(visible: true, analyzing: false) == 100)
         let worker = AudioWorker()
         worker.queue.sync {
             var emissions = 0

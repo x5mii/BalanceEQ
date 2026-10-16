@@ -2,11 +2,17 @@
 import Accelerate
 import CEQ
 import Foundation
+import Combine
 
 struct Spectrum: Equatable, Sendable {
     var before: [Double] = []
     var after: [Double] = []
     var sampleRate: Double = 48000
+}
+
+@MainActor
+final class SpectrumModel: ObservableObject {
+    @Published var frame = Spectrum()
 }
 
 /// Runs only on the serial audio control queue, never inside the audio callback.

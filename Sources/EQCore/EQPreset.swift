@@ -153,6 +153,28 @@ public struct EQPreset: Identifiable, Codable, Equatable, Sendable {
         }
     }
 
+    /// Prepare coefficients once per curve, rather than once per frequency and band.
+    public func responseDB(at frequencies: [Double], sampleRate: Double) -> [Double] {
+        guard (try? validate(sampleRate: sampleRate)) != nil else {
+            return frequencies.map { _ in .nan }
+        }
+        var coefficients: [[Double]] = []
+        for band in bands where band.enabled {
+            var c = [Double](repeating: 0, count: 5)
+            guard eq_coefficients(band.cBand, sampleRate, &c) else { return frequencies.map { _ in .nan } }
+            coefficients.append(c)
+        }
+        return frequencies.map { frequency in
+            guard frequency.isFinite, frequency > 0, frequency < sampleRate / 2 else { return .nan }
+            let w = 2 * Double.pi * frequency / sampleRate
+            let c1 = cos(w), c2 = cos(2 * w), s1 = sin(w), s2 = sin(2 * w)
+            return coefficients.reduce(preampDB) { total, c in
+                total + 20 * log10(hypot(c[0] + c[1] * c1 + c[2] * c2, -c[1] * s1 - c[2] * s2) /
+                                  hypot(1 + c[3] * c1 + c[4] * c2, -c[3] * s1 - c[4] * s2))
+            }
+        }
+    }
+
     /// Approximate steady-state headroom, bounded by the preamp control; not a peak limiter.
     public func recommendedPreamp(sampleRate: Double) -> Double {
         guard (try? validate(sampleRate: sampleRate)) != nil else { return .nan }
@@ -160,7 +182,7 @@ public struct EQPreset: Identifiable, Codable, Equatable, Sendable {
         // ponytail: sampled response estimate; use peak optimization if precise headroom is needed.
         let frequencies = (0...1_024).map { 10 * pow(upper / 10, Double($0) / 1_024) }
             + bands.filter(\.enabled).map(\.frequency)
-        let peak = frequencies.reduce(0.0) { max($0, responseDB(at: $1, sampleRate: sampleRate) - preampDB) }
+        let peak = responseDB(at: frequencies, sampleRate: sampleRate).reduce(0.0) { max($0, $1 - preampDB) }
         return max(-60, min(0, -peak))
     }
 }
