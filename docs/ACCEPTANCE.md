@@ -1,9 +1,13 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 # Release acceptance record
 
-Status: **development preview; not accepted for public binary release**.
+Status: **1.0.0 community distribution authorized without notarization; full hardware and signed-distribution acceptance incomplete**.
 
 This record separates deterministic checks from actual playback, supported-platform acceptance, and distribution. Only mark a checkbox after recording evidence from the named build and device. The universal build and passing DSP tests cannot establish real-device volume, latency, recovery, or protected-media behavior.
+
+## Community publication decision — 2026-10-16
+
+The maintainer explicitly requested publishing the current build on GitHub with a one-command installer despite the unavailable Developer ID certificate. Version 1.0.0/build 3 is distributed ad-hoc signed, with that limitation disclosed. The installer retains strict default behavior; `--allow-unnotarized` permits installation after checksum/identity/code-integrity validation but never auto-launches an app rejected by Gatekeeper. No Gatekeeper setting, quarantine attribute, or audio permission is changed. The device and signed-release checkboxes below remain pending. This decision supersedes the earlier publication hold, not the verification record.
 
 ## Evidence available on 2026-10-13
 

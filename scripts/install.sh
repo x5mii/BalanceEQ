@@ -3,6 +3,13 @@
 set -euo pipefail
 
 fail() { printf 'BalanceEQ: %s\n' "$*" >&2; exit 1; }
+allow_unnotarized=false
+case "${1:-}" in
+    '') ;;
+    --allow-unnotarized) allow_unnotarized=true; shift ;;
+    *) fail 'Usage: install.sh [--allow-unnotarized]' ;;
+esac
+[[ "$#" -eq 0 ]] || fail 'Usage: install.sh [--allow-unnotarized]'
 [[ "$(uname -s)" == Darwin ]] || fail 'This installer requires macOS.'
 [[ "$EUID" -ne 0 ]] || fail 'Run without sudo; BalanceEQ installs for your user.'
 IFS=. read -r major minor patch <<< "$(sw_vers -productVersion)"
@@ -31,12 +38,12 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 
 base='https://github.com/x5mii/BalanceEQ/releases/latest/download'
-printf 'Downloading the latest signed BalanceEQ release…\n'
+printf 'Downloading the latest BalanceEQ release…\n'
 for asset in BalanceEQ.zip BalanceEQ.zip.sha256; do
     curl --fail --location --silent --show-error --proto '=https' --proto-redir '=https' \
         --tlsv1.2 --connect-timeout 15 --max-time 180 --retry 2 \
         "$base/$asset" --output "$work/$asset" ||
-        fail 'No downloadable signed release was found, or the download failed. See https://github.com/x5mii/BalanceEQ/releases'
+        fail 'No downloadable release was found, or the download failed. See https://github.com/x5mii/BalanceEQ/releases'
 done
 expected=$(awk 'NR == 1 { print $1; exit }' "$work/BalanceEQ.zip.sha256")
 [[ "$expected" =~ ^[[:xdigit:]]{64}$ ]] || fail 'The release checksum is invalid.'
@@ -55,7 +62,13 @@ app="$work/unpacked/BalanceEQ.app"
 bundle_id=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Contents/Info.plist")
 [[ "$bundle_id" == org.equalizerformac.app ]] || fail 'The download has an unexpected app identity.'
 codesign --verify --deep --strict "$app" || fail 'App signature verification failed.'
-spctl --assess --type execute "$app" || fail 'macOS did not approve this release. Nothing was installed.'
+approved=true
+if ! spctl --assess --type execute "$app"; then
+    "$allow_unnotarized" || fail 'macOS did not approve this release. Nothing was installed. The unnotarized community build requires --allow-unnotarized.'
+    approved=false
+    printf 'This build is not approved by Gatekeeper. Installing only; it will not be launched automatically.\n'
+    printf 'Its checksum and code integrity passed, but these do not verify the developer or replace Apple notarization.\n'
+fi
 
 if [[ -e "$destination" || -L "$destination" ]]; then
     [[ -d "$destination" && ! -L "$destination" ]] || fail 'The install destination is occupied by another file.'
@@ -68,4 +81,10 @@ ditto "$app" "$stage/BalanceEQ.app"
 if [[ -d "$destination" ]]; then mv "$destination" "$stage/previous.app"; fi
 mv "$stage/BalanceEQ.app" "$destination"
 printf 'Installed %s\nYour presets are preserved. Use the EQ icon in the menu bar.\n' "$destination"
-open "$destination" || printf 'Open BalanceEQ from your Applications folder to finish.\n'
+if "$approved"; then
+    open "$destination" || printf 'Open BalanceEQ from your Applications folder to finish.\n'
+else
+    printf 'Open ~/Applications/BalanceEQ.app in Finder when you are ready.\n'
+    printf 'If macOS blocks it and you trust this release: System Settings → Privacy & Security → Open Anyway.\n'
+    printf 'No security settings or quarantine attributes were changed.\n'
+fi

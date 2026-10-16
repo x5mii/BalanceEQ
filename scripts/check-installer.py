@@ -40,7 +40,7 @@ elif name == "curl":
 elif name == "codesign":
     sys.exit(1 if mode == "bad_signature" else 0)
 elif name == "spctl":
-    sys.exit(1 if mode == "gatekeeper" else 0)
+    sys.exit(1 if mode in ("gatekeeper", "unnotarized_install", "unnotarized_update") else 0)
 elif name == "mv":
     assert all(pathlib.Path(arg).is_relative_to(root) for arg in args)
     if mode == "failed_replacement" and pathlib.Path(args[0]).name == "BalanceEQ.app" and pathlib.Path(args[0]).parent.name.startswith(".balanceeq-install."):
@@ -68,7 +68,7 @@ def snapshot(app):
     return {str(path.relative_to(app)): path.read_bytes() for path in app.rglob("*") if path.is_file()}
 
 
-def check_case(mode, error=None, existing=True):
+def check_case(mode, error=None, existing=True, allow_unnotarized=False):
     with tempfile.TemporaryDirectory(prefix="balanceeq-installer-check-") as directory:
         root = Path(directory).resolve()
         test_home, temporary, fixtures, commands = [root / name for name in ("home", "tmp", "fixtures", "bin")]
@@ -107,7 +107,8 @@ def check_case(mode, error=None, existing=True):
                    BALANCEEQ_INSTALLER_TEST=str(root), BALANCEEQ_INSTALLER_CASE=mode)
         env.pop("BASH_ENV", None)
         env.pop("ENV", None)
-        result = subprocess.run(["/bin/bash", str(INSTALLER)], env=env, text=True,
+        arguments = ["--allow-unnotarized"] if allow_unnotarized else []
+        result = subprocess.run(["/bin/bash", str(INSTALLER), *arguments], env=env, text=True,
                                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=30)
         assert (result.returncode == 0) == (error is None), (mode, result.returncode, result.stdout)
         if error:
@@ -118,7 +119,11 @@ def check_case(mode, error=None, existing=True):
         assert not list((test_home / "Applications").glob(".balanceeq-install.*")), (mode, "Staging files leaked")
         calls = [json.loads(line) for line in (root / "calls.jsonl").read_text().splitlines()]
         opened = [call for call in calls if call["tool"] == "open"]
-        assert opened == ([] if error else [{"tool": "open", "args": [str(destination)]}]), mode
+        assert opened == ([] if error or mode.startswith("unnotarized_") else [{"tool": "open", "args": [str(destination)]}]), mode
+        if mode.startswith("unnotarized_"):
+            assert "not be launched automatically" in result.stdout and "Open Anyway" in result.stdout
+            assert any(call["tool"] == "codesign" for call in calls)
+            assert any(call["tool"] == "spctl" for call in calls)
         if mode in ("running", "old_os"):
             assert not any(call["tool"] == "curl" for call in calls), mode
         if mode == "failed_replacement":
@@ -131,6 +136,10 @@ if __name__ == "__main__":
         sys.exit("Installer checks require macOS and a non-root user.")
     check_case("first_install", existing=False)
     check_case("update")
+    check_case("unnotarized_install", existing=False, allow_unnotarized=True)
+    check_case("unnotarized_update", allow_unnotarized=True)
+    check_case("bad_signature", "signature verification failed", allow_unnotarized=True)
+    check_case("bad_checksum", "checksum mismatch", allow_unnotarized=True)
     for case, message in (
         ("running", "Quit BalanceEQ"),
         ("bad_checksum", "checksum mismatch"),
@@ -139,6 +148,6 @@ if __name__ == "__main__":
         ("gatekeeper", "macOS did not approve"),
         ("old_os", "macOS 14.2 or later"),
         ("failed_replacement", "replacement move failed"),
-        ("download_failure", "No downloadable signed release"),
+        ("download_failure", "No downloadable release"),
     ):
         check_case(case, message)

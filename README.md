@@ -5,19 +5,19 @@
 
 A native, free macOS equalizer inspired by the workflow of Equalizer APO and Peace. SwiftUI controls sit above a small C audio engine. There are no accounts, ads, subscriptions, telemetry, installed audio drivers, or third-party runtime packages.
 
-**1.0.0 release preparation:** the source and local build are available in this checkout. A signed public release has not been produced. See the [1.0.0 draft notes](docs/releases/1.0.0.md). Hardware audio acceptance, macOS 14.2 compatibility, and Intel runtime testing remain pending; see [the acceptance record](docs/ACCEPTANCE.md). Building successfully does not establish those results.
+**[BalanceEQ 1.0.0](https://github.com/x5mii/BalanceEQ/releases/tag/v1.0.0)** is available as an **unnotarized community build**, with source and a universal download. It is ad-hoc signed, without an Apple-verified developer identity. See the [release notes](docs/releases/1.0.0.md). Hardware audio acceptance, macOS 14.2 compatibility, and Intel runtime testing remain pending; see [the acceptance record](docs/ACCEPTANCE.md). Building successfully does not establish those results.
 
 ## Install with one command
 
-**Ready for the first signed release:** there is currently no public release binary. Until one is published, this installer reports that no download is available and leaves your Mac unchanged.
-
-Once a signed release is available, paste this one command into Terminal:
+Paste this command into Terminal. The explicit `--allow-unnotarized` option permits installing this community build; it does not disable Gatekeeper or automatically launch a rejected app:
 
 ```sh
-/bin/bash -c 'set -e; installer=$(curl -fsSL https://raw.githubusercontent.com/x5mii/BalanceEQ/main/scripts/install.sh); /bin/bash -c "$installer"'
+/bin/bash -c 'set -e; installer=$(curl -fsSL https://raw.githubusercontent.com/x5mii/BalanceEQ/v1.0.0/scripts/install.sh); /bin/bash -c "$installer" -- --allow-unnotarized'
 ```
 
-The command fetches the complete [installer script](scripts/install.sh) before running it. The installer downloads the latest universal GitHub release, verifies its SHA-256 checksum, code signature, and macOS Gatekeeper approval, then installs into `~/Applications/BalanceEQ.app` and opens it. No sudo, Homebrew, Xcode, or account is needed. macOS 14.2 or later is required.
+The command fetches the complete [installer script](scripts/install.sh) before running it. The installer downloads the latest universal GitHub release, verifies its SHA-256 checksum and code integrity, checks Gatekeeper, then installs into `~/Applications/BalanceEQ.app`. Ad-hoc signature verification checks integrity, not the developer’s identity. If Gatekeeper rejects the build, installation requires the explicit option above and the app is not launched automatically. No sudo, Homebrew, Xcode, or account is needed. macOS 14.2 or later is required.
+
+**First launch:** open `~/Applications/BalanceEQ.app` in Finder. If macOS blocks it and you trust this release, follow [Apple’s instructions](https://support.apple.com/en-us/102445): System Settings → Privacy & Security → **Open Anyway**. Managed Macs may prevent this. A clean-Mac first launch has not yet been verified.
 
 Run the same command to update; first choose **Quit BalanceEQ** from the menu bar. Updates preserve your presets and restore the previous app if replacement fails. The installer never disables Gatekeeper, removes quarantine, or grants audio permission. On first use, choose **Start EQ** and allow System Audio Recording when macOS asks.
 
@@ -33,9 +33,9 @@ The deployment target is macOS 14.2 or later, for Apple Silicon and Intel. Build
 open "build/BalanceEQ.app"
 ```
 
-The build script creates a universal `arm64` + `x86_64` app by default. For a faster local Apple Silicon build, run `ARCHITECTURES=arm64 ./scripts/build-app.sh`. Local builds are **ad-hoc signed**, without a Developer ID or notarization. They are developer builds, not the intended public download.
+The build script creates a universal `arm64` + `x86_64` app by default. For a faster local Apple Silicon build, run `ARCHITECTURES=arm64 ./scripts/build-app.sh`. Local builds are **ad-hoc signed**, without a Developer ID or notarization. Version 1.0.0 is distributed in this form; the release notes disclose its limitations.
 
-For repeat development builds, `LOCAL_SIGNING_IDENTITY="your code-signing identity" ./scripts/build-app.sh` uses an existing persistent local certificate without a timestamp. Keep the same identity and bundle identifier between builds; ad-hoc signatures change with the executable and can cause macOS to ask for capture permission again. A public release still requires Developer ID signing and notarization. The app keeps its original `org.equalizerformac.app` identifier and `EqualizerForMac` data folder so the BalanceEQ rename preserves existing presets.
+For repeat development builds, `LOCAL_SIGNING_IDENTITY="your code-signing identity" ./scripts/build-app.sh` uses an existing persistent local certificate without a timestamp. Keep the same identity and bundle identifier between builds; ad-hoc signatures change with the executable and can cause macOS to ask for capture permission again. Future notarized releases need Developer ID signing and notarization. The app keeps its original `org.equalizerformac.app` identifier and `EqualizerForMac` data folder so the BalanceEQ rename preserves existing presets.
 
 The blue B/EQ artwork is generated from the shared native vector code: `xcrun swiftc Sources/EqualizerMac/Branding.swift scripts/generate-icon.swift -o .build/generate-icon`, then `.build/generate-icon` and `iconutil -c icns .build/BalanceEQ.iconset -o Resources/BalanceEQ.icns`.
 
@@ -109,8 +109,8 @@ SIGNING_IDENTITY="Developer ID Application: Your Name (TEAMID)" \
 NOTARY_PROFILE="your-notary-profile" ./scripts/notarize.sh
 ```
 
-The script reruns checks, builds both architectures, signs with the hardened runtime, submits to Apple, staples the ticket, checks Gatekeeper, and creates `build/BalanceEQ.zip` with `build/BalanceEQ.zip.sha256`. The checksum contains the portable archive filename. It does not publish a GitHub release. The source and corresponding free signed binary should be published together only after the acceptance record is complete.
+The script reruns checks, builds both architectures, signs with the hardened runtime, submits to Apple, staples the ticket, checks Gatekeeper, and creates `build/BalanceEQ.zip` with `build/BalanceEQ.zip.sha256`. The checksum contains the portable archive filename. It does not publish a GitHub release. The signed distribution acceptance checks remain pending. Version 1.0.0 was authorized for community distribution without notarization; this does not mark those checks complete.
 
-Publish those two files as assets named exactly **BalanceEQ.zip** and **BalanceEQ.zip.sha256** on a normal GitHub Release marked **Latest**, with a tag pointing to the source revision used to build it. GitHub's `/releases/latest/download/BalanceEQ.zip` URL lets the installer find new versions without changing the install command. Drafts, prereleases, and the unnotarized CI artifacts do not enable this public installer. Keep the same Developer ID identity across releases so macOS can recognize app updates.
+Publish those two files as assets named exactly **BalanceEQ.zip** and **BalanceEQ.zip.sha256** on a normal GitHub Release marked **Latest**, with a tag pointing to the source revision used to build it. GitHub's `/releases/latest/download/BalanceEQ.zip` URL lets the installer find new versions without changing the install command. Drafts, prereleases, and CI artifacts do not resolve through that URL. The default installer requires Gatekeeper approval; this unnotarized release requires the explicit `--allow-unnotarized` installation option and manual first launch. Once Developer ID signing is available, keep the same identity across releases so macOS can recognize app updates.
 
 The app code is licensed under [GNU GPL version 3 or any later version](LICENSE), without warranty. The bundled OPRA dataset remains separately licensed under CC BY-SA 4.0. Our releases are free; these licenses also permit paid redistribution subject to their terms. Equalizer APO and Peace are independent projects; this project is not affiliated with them. See [third-party notices](THIRD_PARTY_NOTICES.md) for catalog provenance and licenses.
