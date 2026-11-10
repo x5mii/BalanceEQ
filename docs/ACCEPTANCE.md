@@ -1,9 +1,13 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 # Release acceptance record
 
-Status: **1.2.0 community distribution authorized without notarization; full hardware and signed-distribution acceptance incomplete**.
+Status: **1.2.1 community distribution authorized without notarization; full hardware and signed-distribution acceptance incomplete**.
 
 This record separates deterministic checks from actual playback, supported-platform acceptance, and distribution. Only mark a checkbox after recording evidence from the named build and device. The universal build and passing DSP tests cannot establish real-device volume, latency, recovery, or protected-media behavior.
+
+## 1.2.1 publication decision — 2026-11-10
+
+The maintainer explicitly requested publishing the tested build 8, updating the installer command and signed update feed. The existing community-build limitations remain disclosed. Earlier release assets are retained; this does not complete outstanding hardware or Apple-signed distribution acceptance.
 
 ## 1.2.1 measurement-fit candidate — 2026-11-10
 

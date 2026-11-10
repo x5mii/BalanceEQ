@@ -12,7 +12,7 @@ the relaunched app starts with EQ stopped, as on any ordinary launch.
 
 The feed lives at `https://raw.githubusercontent.com/x5mii/BalanceEQ/updates/appcast.xml`.
 The dedicated `updates` branch contains only the signed feed, currently advertising
-1.2.0/build 7. A candidate newer than the feed reports that it is up to date.
+1.2.1/build 8. A candidate newer than the feed reports that it is up to date.
 Existing 1.1.1 apps have no
 updater and need one initial manual installation of 1.1.2 or later.
 
@@ -24,6 +24,14 @@ public key is in `Resources/Info.plist`. Keep a secure backup of the Keychain;
 never commit/export the private key into this repository, CI logs or releases.
 Do not generate a replacement key for a routine release. Without the original
 key, installed ad-hoc builds cannot trust new updates.
+
+Password dialogs naming `generate_appcast` or **Private key for signing Sparkle updates**
+are maintainer-only Keychain requests during publication. They are not part of the
+installed app's update flow and end users do not need this private key. Use one
+`generate_appcast` invocation for the final archive/feed, then verify using the public
+key embedded in the app to avoid redundant private-key lookups. The `sign_update
+--verify` command below is an optional Keychain-backed alternative and may prompt again.
+Do not export the key or weaken its access controls to suppress prompts.
 
 These signatures authenticate updates to the app's embedded key. They do not
 establish an Apple Developer ID or notarization. The existing community-build
@@ -49,8 +57,8 @@ this with `codesign --deep` signing. Deep *verification* is appropriate.
    ```sh
    .build/tests/artifacts/sparkle/Sparkle/bin/generate_appcast \
      --account BalanceEQ --maximum-deltas 0 \
-     --download-url-prefix https://github.com/x5mii/BalanceEQ/releases/download/v1.2.0/ \
-     --link https://github.com/x5mii/BalanceEQ/releases/tag/v1.2.0 \
+     --download-url-prefix https://github.com/x5mii/BalanceEQ/releases/download/v1.2.1/ \
+     --link https://github.com/x5mii/BalanceEQ/releases/tag/v1.2.1 \
      path/to/staging-directory
    ```
 
