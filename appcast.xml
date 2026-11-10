@@ -1,13 +1,20 @@
-<?xml version="1.0" encoding="utf-8" standalone="yes"?><!-- sparkle-sign-warning:
+<?xml version="1.0" standalone="yes"?><!-- sparkle-sign-warning:
 IMPORTANT: This file was signed by Sparkle. Any modifications to this file requires re-signing this file with generate_appcast or sign_update! The signed signature will be embedded at the end of this file.
 --><rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
-  <channel>
-    <title>BalanceEQ</title>
-    <link>https://github.com/x5mii/BalanceEQ/releases</link>
-    <description>Signed updates for BalanceEQ. No updater-enabled release has been published yet.</description>
-    <language>en</language>
-  </channel>
+    <channel>
+        <title>BalanceEQ</title>
+        <item>
+            <title>1.1.2</title>
+            <pubDate>Tue, 10 Nov 2026 15:32:53 +0100</pubDate>
+            <link>https://github.com/x5mii/BalanceEQ/releases/tag/v1.1.2</link>
+            <sparkle:version>6</sparkle:version>
+            <sparkle:shortVersionString>1.1.2</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.2</sparkle:minimumSystemVersion>
+            <description><![CDATA[<h2>BalanceEQ 1.1.2</h2><p>Adds Check for Updates to the app and menu bar. Updates verify signatures, preserve presets, and install only when you choose. No background polling or profiling.</p><p>This community build is ad-hoc signed and unnotarized. Audio stops during restart; choose Start EQ afterward. macOS may request audio permission again.</p>]]></description>
+            <enclosure url="https://github.com/x5mii/BalanceEQ/releases/download/v1.1.2/BalanceEQ.zip" length="14654143" type="application/octet-stream" sparkle:edSignature="R4T48Gx05SYo6eWhvNBSojtyWMX7duiOpZSeed0LFZ0tb+++01k/R8anRk0h+Ep1H/FeZkee5ZBMje/kMDwJCg=="></enclosure>
+        </item>
+    </channel>
 </rss><!-- sparkle-signatures:
-edSignature: Yni0Af1WY51htPEZVc9e4VIP9PUKiAM+KtvYHsIxeHM6sctBD9WdenjQsxL/+pXhg/sod8OFRIv804977T2kAg==
-length: 640
+edSignature: 5pGdw/lOtiluavLjaf7I2tsNpJPkjORVlvav77eUgp0vwpwl+cGSYeuzlax15JJPWFDAxUVo3ch+pZYFPDTaAw==
+length: 1519
 -->
