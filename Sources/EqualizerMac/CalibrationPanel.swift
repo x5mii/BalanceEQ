@@ -20,7 +20,8 @@ struct CalibrationPanel: View {
     private var selectedTarget: CalibrationTarget? { selected.flatMap { targets?.target(for: $0, mode: baseMode) } }
     private var applied: Bool {
         selected?.id == model.preset.calibration?.measurementID && mode == model.preset.calibration?.targetMode &&
-        (mode != .custom || customBase == model.preset.calibration?.customBase)
+        (mode != .custom || customBase == model.preset.calibration?.customBase) &&
+        (baseMode != .neutral || model.preset.calibration?.measurementFitVersion == 1)
     }
     private var editingCustom: Bool { applied && mode == .custom }
 
@@ -50,7 +51,7 @@ struct CalibrationPanel: View {
                 }
             }.disabled(busy)
             HStack {
-                Text(mode == .harman ? "Harman preference tuning, matched to this measurement." : mode == .custom ? "Shape your own target from a compatible reference." : "Neutral uses the matched reference without the added bass shelf.")
+                Text(mode == .harman ? "Harman preference tuning, matched to this measurement." : mode == .custom ? "Shape your own target from a compatible reference." : "Fits the measured headphone response to the open Neutral reference. Treble correction stays conservative.")
                     .font(.callout).foregroundStyle(.secondary)
                 Spacer()
                 if mode == .custom {
@@ -133,7 +134,8 @@ struct CalibrationPanel: View {
     private func referenceName(profile: CalibrationProfile) -> String {
         guard let id = model.preset.calibration?.targetID, let target = try? targets?.target(id: id) else { return profile.targetName }
         let bass = model.preset.calibration?.customBase == .harman
-        return "Reference: \(target.name) · \(bass ? "AutoEq preference bass" : "no added bass shelf") · \(profile.source) / \(profile.variant)"
+        let fit = model.preset.calibration?.measurementFitVersion == 1 ? " · measurement-fitted" : ""
+        return "Reference: \(target.name) · \(bass ? "AutoEq preference bass" : "no added bass shelf")\(fit) · \(profile.source) / \(profile.variant)"
     }
     private func graph(_ response: CalibrationCurve.Response, neutral: Bool) -> some View {
         let maximum = response.frequencies.last ?? 20000

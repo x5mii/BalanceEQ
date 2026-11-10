@@ -76,7 +76,16 @@ extension CalibrationProfile {
         guard custom.count + result.bands.count <= 32 else { throw EQError.invalid("The correction and custom target exceed 32 bands.") }
         let adjustment = try TargetFitter.fit(frequencies: grid, delta: zip(desired, reference).map(-), sampleRate: sampleRate,
                                              maximumBands: min(6, 32 - result.bands.count - custom.count))
-        result.bands += adjustment + custom
+        result.bands += adjustment
+        if base == .neutral {
+            let fitGrid = (0...384).map { 20 * pow(min(20000, sampleRate * 0.49) / 20, Double($0) / 384) }
+            let measured = CalibrationCurve.interpolate(curve.measured, frequencies: curve.frequencies, at: fitGrid)
+            let fitTarget = target.response(at: fitGrid, bass: false, anchor: anchor)
+            result.bands = try TargetFitter.fitMeasurement(frequencies: fitGrid, measured: measured, target: fitTarget,
+                                                         seed: result.bands, sampleRate: sampleRate)
+            result.calibration?.measurementFitVersion = 1
+        }
+        result.bands += custom
         result.name = String((name + " · " + mode.title).prefix(100))
         result.calibration?.targetID = target.id
         result.calibration?.targetMode = mode

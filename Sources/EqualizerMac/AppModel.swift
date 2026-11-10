@@ -218,6 +218,7 @@ final class AppModel: ObservableObject {
             settings.targetID = nil
             settings.targetMode = nil
             settings.customBase = nil
+            settings.measurementFitVersion = nil
             value.calibration = settings
             try value.validate()
             preset = value

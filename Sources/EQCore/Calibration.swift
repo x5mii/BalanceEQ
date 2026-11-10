@@ -11,6 +11,7 @@ public struct CalibrationSettings: Codable, Equatable, Sendable {
     public var targetID: String?
     public var targetMode: CalibrationTargetMode?
     public var customBase: CalibrationTargetMode?
+    public var measurementFitVersion: Int?
     public init(measurementID: String, sourceCommit: String = CalibrationCatalog.sourceCommit) {
         self.measurementID = measurementID; self.sourceCommit = sourceCommit
     }

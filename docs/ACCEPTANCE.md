@@ -5,6 +5,15 @@ Status: **1.2.0 community distribution authorized without notarization; full har
 
 This record separates deterministic checks from actual playback, supported-platform acceptance, and distribution. Only mark a checkbox after recording evidence from the named build and device. The universal build and passing DSP tests cannot establish real-device volume, latency, recovery, or protected-media behavior.
 
+## 1.2.1 measurement-fit candidate — 2026-11-10
+
+- Build 8 is local development; public 1.2.0 and the signed update feed are unchanged.
+- All 34 Swift tests, app lifecycle/gesture self-checks, callback harness, installer and updater checks passed. Universal arm64/x86_64 build and strict nested code-signature verification passed.
+- New checks verify a synthetic known correction, zero-error fallback, finite/sorted input and sample-rate boundaries, bounded boost, fixed treble filters, no additional filter count, headroom recalculation, metadata round trips, older preset compatibility and unknown fitting-version rejection. DT990 Pro, fresh/worn-pad variants and T5 are compared against the 1.2 target-adaptation baseline at 44.1/48/96 kHz.
+- DT990 Pro raw predicted RMS error from 20 Hz to 6 kHz improved 0.3811→0.3035 dB at 44.1 kHz, 0.3822→0.3109 dB at 48 kHz and 0.4001→0.3160 dB at 96 kHz. These are model-data/biquad calculations against the unchanged open reference, not acoustic measurements or proof of better mixing translation.
+- The reference curve remains the rig-compatible AutoEq base without preference bass. This update does not establish Sonarworks SR equivalence or a newly validated studio reference. High-frequency residuals are deliberately retained rather than hidden.
+- Final local installation/UI checks are pending: app-control Quit commands timed out while the user’s 1.2.0 app was processing. The running app and latest user tuning have not been overwritten.
+
 ## 1.2.0 publication decision — 2026-11-10
 
 The maintainer explicitly requested publishing 1.2.0/build 7 and updating the installer command and signed Sparkle feed. The tested local candidate is promoted with the source tag and universal community download. Earlier releases remain available. This does not mark outstanding hardware, accessibility, supported-platform or Apple-signed distribution acceptance complete.

@@ -21,6 +21,29 @@ A native, free macOS equalizer inspired by the workflow of Equalizer APO and Pea
 - Existing presets and OPRA/imported EQ remain usable unchanged. **Advanced → Link Measurement** explicitly associates an exact model without replacing filters. Missing measurement references leave audio intact and explain why the prediction is unavailable.
 - Saved presets retain target and measurement metadata. APO exports contain the combined effective filters, without that metadata. Published AutoEq correction filters seed each calibration; up to six additional native biquads fit the smooth target difference. Residuals, including high-frequency errors, are not hidden. The total remains limited to 32 bands, with no added playback buffering.
 
+### Development: measurement-fitted Neutral (1.2.1 candidate)
+
+New Neutral applications now refit the published headphone measurement to the named
+open reference, rather than only adding a target-difference correction to a published
+preset. The previous correction seeds the fit and remains the fallback if raw predicted
+error does not improve. Custom targets based on Neutral inherit this refinement.
+Harman and previously saved presets retain their sound; reapply Neutral to use the new fit.
+
+The **reference target itself is unchanged**: the compatible AutoEq base without its
+preference bass shelf. This is not a newly validated studio target, the proprietary
+SoundID SR transfer curve, or evidence of improved mix translation. Sonarworks defines
+its own speaker-to-headphone reference; see its [Studio Reference white paper](https://sonarworks-uploads.nyc3.cdn.digitaloceanspaces.com/technology/white_paper_sonarworks_studio_reference.pdf).
+A raw ruler-flat coupler response is not what this mode attempts to reproduce.
+
+The fitter smooths the optimization input (1/6 octave below 2 kHz, 1/3 above), minimizes
+error through 6 kHz, and blends back to the existing correction from 6–10 kHz. Filters
+centered above 6 kHz are retained; changes above 10 kHz are bounded to 1 dB on the fit
+grid. Total boost cannot exceed the larger of 6 dB and the seed's existing maximum.
+The displayed measurement and prediction are not smoothed to conceal residuals.
+The same filters run in the existing engine: no additional filter stage or playback
+buffer. A tighter predicted match is an improvement against this reference only;
+pair variation, ear geometry and fit remain unmeasured.
+
 ## In-app updates
 
 Use **Check for Updates…** in the menu-bar menu, application menu, or About window. Sparkle checks the signed feed, presents a newer release, verifies its signature, and installs/relaunches after you choose to update. No Terminal command is needed once this version is installed. Checks are manual; there are no background polls, automatic installations, or system-profile submissions.

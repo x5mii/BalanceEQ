@@ -137,6 +137,11 @@ public struct EQPreset: Identifiable, Codable, Equatable, Sendable {
             }
         }
         if let calibration {
+            if let fit = calibration.measurementFitVersion {
+                guard fit == 1, calibration.targetID != nil, calibration.customBase == .neutral else {
+                    throw EQError.invalid("Unsupported measurement-fit settings.")
+                }
+            }
             if let id = calibration.targetID {
                 guard id.count == 24, id.allSatisfy(\.isHexDigit), calibration.targetMode != nil,
                       calibration.customBase != .custom,

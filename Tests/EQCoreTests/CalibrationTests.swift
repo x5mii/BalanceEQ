@@ -224,11 +224,75 @@ final class CalibrationTests: XCTestCase {
                 let after = try curve.response(preset: preset,sampleRate: 48000,bypassed: false,relative: false)
                 let errors = zip(zip(after.after,before.after),zip(after.target,before.target)).map { ($0.0-$0.1)-($1.0-$1.1) }
                 let rms = sqrt(errors.reduce(0) { $0+$1*$1 } / Double(errors.count))
-                XCTAssertLessThan(rms,1.0,"Target adaptation error for \(target.name) / \(mode): \(rms) dB")
+                if mode == .harman { XCTAssertLessThan(rms,1.0,"Target adaptation error for \(target.name) / \(mode): \(rms) dB") }
+                else { XCTAssertEqual(preset.calibration?.measurementFitVersion,1) }
                 XCTAssertLessThanOrEqual(preset.bands.count,32)
             }
         }
         XCTAssertEqual(checked.count,10) // Ten distinct target/mode pairs in the pinned catalog.
+    }
+
+    func testMeasuredNeutralImprovesRealProfilesWithoutChangingTheReference() throws {
+        let catalog = try CalibrationCatalog.bundled(), targets = try CalibrationTargets.bundled()
+        for name in ["Beyerdynamic DT 990 Pro", "Beyerdynamic DT 990 (fresh earpads)", "Beyerdynamic DT 990 (worn earpads)", "Beyerdynamic T5 (3rd Gen)"] {
+            let profile = try XCTUnwrap(catalog.first { $0.name == name }), curve = try profile.loadCurve()
+            for rate in [44100.0,48000,96000] {
+                let fitted = try profile.calibrated(curve: curve, mode: .neutral, sampleRate: rate)
+                let target = try XCTUnwrap(targets.target(for: profile,mode: .neutral))
+                let grid = (0...191).map { 20 * pow(1000,Double($0) / 191) }
+                let anchor = CalibrationCurve.interpolate(curve.target,frequencies: curve.frequencies,at: [1000])[0]
+                let desired = target.response(at: grid,bass: false,anchor: anchor)
+                let reference = CalibrationCurve.interpolate(curve.target,frequencies: curve.frequencies,at: grid)
+                var legacy = try profile.preset(curve: curve)
+                legacy.bands += try TargetFitter.fit(frequencies: grid,delta: zip(desired,reference).map(-),sampleRate: rate,maximumBands: 6)
+                legacy.calibration = fitted.calibration
+                let old = try curve.response(preset: legacy,sampleRate: rate,bypassed: false,relative: true)
+                let new = try curve.response(preset: fitted,sampleRate: rate,bypassed: false,relative: true)
+                let indices = new.frequencies.indices.filter { new.frequencies[$0] <= 6000 }
+                func rms(_ values: [Double]) -> Double { sqrt(indices.reduce(0) { $0 + values[$1] * values[$1] } / Double(indices.count)) }
+                XCTAssertLessThanOrEqual(rms(new.after),rms(old.after) + 1e-8)
+                XCTAssertEqual(fitted.bands.count,legacy.bands.count,"Refitting must not add playback work")
+                let oldTreble = legacy.bands.filter { $0.frequency > 6000 }, newTreble = fitted.bands.filter { $0.frequency > 6000 }
+                XCTAssertEqual(oldTreble.map(\.frequency),newTreble.map(\.frequency))
+                XCTAssertEqual(oldTreble.map(\.gainDB),newTreble.map(\.gainDB))
+                XCTAssertEqual(oldTreble.map(\.q),newTreble.map(\.q))
+                let oldGain = legacy.responseDB(at: new.frequencies,sampleRate: rate).map { $0 - legacy.preampDB }
+                let newGain = fitted.responseDB(at: new.frequencies,sampleRate: rate).map { $0 - fitted.preampDB }
+                for i in new.frequencies.indices where new.frequencies[i] >= 10000 {
+                    XCTAssertLessThanOrEqual(abs(newGain[i] - oldGain[i]),1 + 1e-8)
+                }
+                XCTAssertLessThanOrEqual(newGain.max()!,max(6,oldGain.max()!) + 1e-8)
+                if name == "Beyerdynamic DT 990 Pro" {
+                    XCTAssertLessThan(rms(new.after),rms(old.after) * 0.9)
+                    print("Neutral fit \(name) at \(rate): \(rms(old.after)) -> \(rms(new.after)) dB RMS, 20 Hz–6 kHz")
+                }
+                XCTAssertEqual(fitted.preampDB,fitted.recommendedPreamp(sampleRate: rate),accuracy: 1e-9)
+                XCTAssertEqual(try JSONDecoder().decode(EQPreset.self,from: JSONEncoder().encode(fitted)),fitted)
+                var saved = fitted
+                saved.calibration?.measurementFitVersion = nil // Previously saved 1.2 Neutral stays playable.
+                XCTAssertNoThrow(try saved.validate(sampleRate: rate))
+                saved.calibration?.measurementFitVersion = 2
+                XCTAssertThrowsError(try saved.validate())
+            }
+        }
+    }
+
+    func testMeasurementFitBoundariesAndSyntheticCorrection() throws {
+        let grid = (0...384).map { 20 * pow(1000,Double($0) / 384) }
+        let shape = EQPreset(name: "Synthetic",bands: [EQBand(frequency: 1000,gainDB: 4,q: 1)])
+        let measured = shape.responseDB(at: grid,sampleRate: 48000), flat = grid.map { _ in 0.0 }
+        let seed = [EQBand(frequency: 1000,gainDB: 0,q: 1)]
+        let fit = try TargetFitter.fitMeasurement(frequencies: grid,measured: measured,target: flat,seed: seed,sampleRate: 48000)
+        let response = EQPreset(name: "Fit",bands: fit).responseDB(at: grid,sampleRate: 48000)
+        XCTAssertLessThan(sqrt(zip(response,measured).reduce(0) { $0 + pow($1.0+$1.1,2) } / Double(grid.count)),0.2)
+        XCTAssertEqual(fit.map(\.id),seed.map(\.id))
+        XCTAssertEqual(try TargetFitter.fitMeasurement(frequencies: grid,measured: flat,target: flat,seed: seed,sampleRate: 48000),seed)
+        let deepDip = measured.map { -10 * $0 }
+        let bounded = try TargetFitter.fitMeasurement(frequencies: grid,measured: deepDip,target: flat,seed: seed,sampleRate: 48000)
+        XCTAssertLessThanOrEqual(EQPreset(name: "Bounded",bands: bounded).responseDB(at: grid,sampleRate: 48000).max()!,6 + 1e-8)
+        XCTAssertThrowsError(try TargetFitter.fitMeasurement(frequencies: grid,measured: [.nan],target: flat,seed: seed,sampleRate: 48000))
+        XCTAssertThrowsError(try TargetFitter.fitMeasurement(frequencies: grid.reversed(),measured: flat,target: flat,seed: seed,sampleRate: 48000))
+        XCTAssertThrowsError(try TargetFitter.fitMeasurement(frequencies: grid,measured: flat,target: flat,seed: seed,sampleRate: 8000))
     }
 
 }
