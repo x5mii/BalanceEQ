@@ -22,6 +22,7 @@ enum EqualizerLauncher {
         if CommandLine.arguments.contains("--self-test") {
             AudioController.checkCleanupHandling()
             EqualizerView.checkControlGestures()
+            GraphBandPoint.check()
             DecimalField.check()
             AudioSpectrum.check()
             EQPlot.check()

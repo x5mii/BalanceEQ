@@ -23,17 +23,17 @@ struct EqualizerView: View {
                     controls
                     HStack {
                         Picker("Graph", selection: $graphMode) {
-                            Text("Headphone Response").tag(0)
-                            Text("EQ response").tag(1)
+                            Text("Headphones").tag(0)
+                            Text("EQ editor").tag(1)
                             Text("Live audio").tag(2)
                         }.pickerStyle(.segmented).labelsHidden().frame(width: 380)
                         Spacer()
                         Text(graphMode == 2 ? "Digital signal · dBFS" : graphMode == 1 ? "Filter gain · dB" : "Headphone calibration")
                             .font(.caption).foregroundStyle(.secondary)
                         Button { showingGraphHelp = true } label: { Image(systemName: "info.circle") }
-                            .buttonStyle(.plain).accessibilityLabel("About the graphs and Harman targets")
+                            .buttonStyle(.plain).accessibilityLabel("About the graphs")
                             .popover(isPresented: $showingGraphHelp) {
-                                Text("EQ response shows calculated filter gain. Live audio shows actual digital samples before and after EQ. Harman-target profiles apply a headphone correction; verifying acoustic target matching requires compatible headphone measurements. The live spectrum cannot measure your headphones.")
+                                Text("Headphones predicts how the selected model responds after correction. In Target error, green is always zero and blue is the remaining error. In Headphone + target, blue should follow green; the target itself need not be horizontal. EQ editor shows the filters applied to your audio. Live audio shows the digital signal, not your headphones. Calibration is an approximation: AutoEq smooths the treble and fits the average above 10 kHz, where measurements are less reliable. A perfectly straight high-frequency line is not guaranteed.")
                                     .font(.callout).padding(20).frame(width: 360)
                             }
                     }
@@ -43,8 +43,7 @@ struct EqualizerView: View {
                         SpectrumGraph(model: audio.spectrum, running: audio.isRunning)
                             .frame(height: 182)
                     } else {
-                    ResponseGraph(preset: model.preset, sampleRate: audio.sampleRate > 0 ? audio.sampleRate : 48000, bypassed: model.bypassed)
-                        .equatable()
+                    ResponseGraph(model: model, sampleRate: audio.sampleRate > 0 ? audio.sampleRate : 48000, bypassed: model.bypassed, visible: audio.isWindowVisible)
                         .frame(height: 182)
                     }
                     if graphMode != 0 || model.preset.calibration == nil || showCorrectionBands {
@@ -430,25 +429,57 @@ extension EqualizerView {
 }
 #endif
 
-private struct ResponseGraph: View, Equatable {
-    let preset: EQPreset
+private struct ResponseGraph: View {
+    @ObservedObject var model: AppModel
+    private var preset: EQPreset { model.preset }
     let sampleRate: Double
     let bypassed: Bool
+    let visible: Bool
     var body: some View {
         let maximum = min(20_000, sampleRate * 0.49)
         let frequencies = (0...384).map { 20 * pow(maximum / 20, Double($0) / 384) }
-        let values = bypassed ? frequencies.map { _ in 0.0 } : preset.responseDB(at: frequencies, sampleRate: sampleRate)
+        let values = !visible ? [] : bypassed ? frequencies.map { _ in 0.0 } : preset.responseDB(at: frequencies, sampleRate: sampleRate)
         EQPlot(after: values, range: -24...24, muted: bypassed)
             .padding(.leading, 40).padding(.trailing, 20).padding(.top, 32).padding(.bottom, 26)
             .background(PlotGrid(range: -24...24, maximum: maximum).equatable())
         .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 18))
         .overlay(alignment: .topLeading) {
-            Text(bypassed ? "BYPASSED · UNITY RESPONSE" : "EQ RESPONSE · dB")
+            Text(bypassed ? "BYPASSED · UNITY RESPONSE" : "DRAG POINTS TO TUNE · SCROLL A POINT TO CHANGE Q")
                 .font(.system(size: 9, weight: .medium)).tracking(1).foregroundStyle(.secondary).padding(.leading, 14).padding(.top, 10)
         }
-        .accessibilityElement(children: .ignore)
+        .overlay {
+            if visible { correctionPoints(maximum: maximum) }
+        }
+        .accessibilityElement(children: .contain)
         .accessibilityLabel("Equalizer frequency response")
         .accessibilityValue(bypassed ? "Bypassed. Flat response." : "\(preset.activeBands.count) enabled filters. Preamp \(String(format: "%.1f", preset.preampDB)) decibels. Edit exact values with the band controls below.")
+    }
+
+    private func correctionPoints(maximum: Double) -> some View {
+        let inactive = preset.calibration?.customTargetEnabled == false ? Set(preset.calibration?.customBandIDs ?? []) : []
+        let bands = preset.bands.filter { !inactive.contains($0.id) }
+        let frequencies = bands.map { max(20, min(maximum, $0.frequency)) }
+        let levels = bypassed ? bands.map(\.gainDB) : preset.responseDB(at: frequencies, sampleRate: sampleRate)
+        return GeometryReader { geometry in
+            let size = CGSize(width: max(1, geometry.size.width - 60), height: max(1, geometry.size.height - 58))
+            ForEach(Array(bands.enumerated()), id: \.element.id) { index, band in
+                correctionPoint(band, level: band.enabled ? levels[index] : band.gainDB, maximum: maximum, size: size)
+                    .zIndex(model.selectedBandID == band.id ? 1 : 0)
+            }
+        }
+    }
+
+    private func correctionPoint(_ band: EQBand, level: Double, maximum: Double, size: CGSize) -> some View {
+        let frequency = max(20, min(maximum, band.frequency))
+        let y = max(-24, min(24, level.isFinite ? level : band.gainDB))
+        let position = CGPoint(x: 40 + log(frequency / 20) / log(maximum / 20) * size.width,
+                               y: 32 + (24 - y) / 48 * size.height)
+        return GraphBandPoint(band: band, selected: model.selectedBandID == band.id, color: .systemBlue,
+                              maximum: maximum, plotSize: size, gainSpan: 48,
+                              select: { model.selectedBandID = band.id }, change: { value in
+            guard let index = model.preset.bands.firstIndex(where: { $0.id == band.id }) else { return }
+            model.preset.bands[index] = value
+        }).frame(width: 28, height: 28).position(position)
     }
 }
 

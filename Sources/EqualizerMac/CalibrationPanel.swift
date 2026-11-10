@@ -13,7 +13,6 @@ struct CalibrationPanel: View {
     @State private var target = true
     @State private var browser = false
     @State private var linkOnly = false
-    @State private var dragStart: EQBand?
     private let range: ClosedRange<Double> = -30...30
     private var custom: Bool { model.preset.calibration?.customTargetEnabled == true }
 
@@ -39,10 +38,12 @@ struct CalibrationPanel: View {
                     Text(profile.name).font(.callout.weight(.semibold)).lineLimit(1).help(profile.name)
                     Spacer()
                     Picker("Response view", selection: $relative) {
-                        Text("Difference from target").tag(true)
-                        Text("Response").tag(false)
-                    }.labelsHidden().frame(width: 205)
+                        Text("Target error (0 = match)").tag(true)
+                        Text("Headphone + target").tag(false)
+                    }.labelsHidden().frame(width: 220)
                 }
+                Text(relative ? "Green is always zero here. Blue shows the remaining error; closer to zero means a closer target match." : "Blue is the predicted headphone response; green is the desired target. Matching curves mean a target match.")
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 if visible {
                 let result = Result { try curve.response(preset: model.preset, sampleRate: sampleRate, bypassed: bypassed, relative: relative) }
                 switch result {
@@ -66,7 +67,7 @@ struct CalibrationPanel: View {
                         Menu { Button("Bell") { model.addTargetBand() }; Button("Low shelf") { model.addTargetBand(.lowShelf) }; Button("High shelf") { model.addTargetBand(.highShelf) } } label: { Label("Add target band", systemImage: "plus") }
                             .disabled(model.preset.bands.count >= 32)
                         Button("Reset Target", action: model.resetTarget)
-                        Text(relative ? "Switch to Response to drag target points." : "Drag target points; edit exact frequency, gain and Q below.")
+                        Text(relative ? "Switch to Headphone + target to edit target points." : "Drag a point to tune. Scroll over it to adjust Q (width).")
                             .font(.caption).foregroundStyle(.secondary)
                         Spacer()
                     }
@@ -109,7 +110,7 @@ struct CalibrationPanel: View {
             ForEach(bands) { band in
                 targetHandle(band, response: response, maximum: maximum, size: geometry.size)
             }
-        }.coordinateSpace(name: "calibrationGraph")
+        }
     }
 
     private func targetHandle(_ band: EQBand, response: CalibrationCurve.Response, maximum: Double, size: CGSize) -> some View {
@@ -119,27 +120,12 @@ struct CalibrationPanel: View {
         let index = min(384, max(0, Int((fraction * 384).rounded())))
         let level = max(range.lowerBound, min(range.upperBound, response.target[index]))
         let position = CGPoint(x: 40 + fraction * width, y: 32 + (range.upperBound - level) / 60 * height)
-        return Button { model.selectedBandID = band.id } label: {
-            Circle().fill(band.enabled ? Color.green : Color.gray)
-                .overlay(Circle().stroke(.background, lineWidth: model.selectedBandID == band.id ? 3 : 1))
-                .frame(width: 14, height: 14).padding(7).contentShape(Rectangle())
-        }.buttonStyle(.plain)
-            .position(position)
-            .highPriorityGesture(DragGesture(minimumDistance: 1, coordinateSpace: .named("calibrationGraph")).onChanged { gesture in
-                if dragStart == nil { dragStart = band; model.selectedBandID = band.id }
-                guard let start = dragStart, let i = model.preset.bands.firstIndex(where: { $0.id == start.id }) else { return }
-                var value = model.preset
-                value.bands[i].frequency = max(20, min(maximum, start.frequency * pow(maximum / 20, gesture.translation.width / width)))
-                value.bands[i].gainDB = max(-24, min(24, start.gainDB - gesture.translation.height / height * 60))
-                model.preset = value
-            }.onEnded { _ in dragStart = nil })
-            .accessibilityElement().accessibilityLabel("Target \(band.type.title), \(Int(band.frequency)) hertz")
-            .accessibilityValue("\(band.gainDB.formatted()) decibels")
-            .accessibilityAction { model.selectedBandID = band.id }
-            .accessibilityAdjustableAction { direction in
-                guard let i = model.preset.bands.firstIndex(where: { $0.id == band.id }) else { return }
-                model.preset.bands[i].gainDB = max(-24, min(24, band.gainDB + (direction == .increment ? 0.1 : -0.1)))
-            }
+        return GraphBandPoint(band: band, selected: model.selectedBandID == band.id, color: .systemGreen,
+                              maximum: maximum, plotSize: CGSize(width: width, height: height), gainSpan: 60,
+                              select: { model.selectedBandID = band.id }, change: { value in
+            guard let index = model.preset.bands.firstIndex(where: { $0.id == band.id }) else { return }
+            model.preset.bands[index] = value
+        }).frame(width: 28, height: 28).position(position)
     }
 
 }

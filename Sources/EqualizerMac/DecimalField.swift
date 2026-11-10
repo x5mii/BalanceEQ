@@ -28,12 +28,12 @@ struct DecimalField: View {
     }
 
     private func reset() {
-        draft = value.formatted(.number.grouping(.never).precision(.fractionLength(0...6)))
+        draft = Self.display(value)
         invalid = false
     }
 
     private func commit() {
-        guard let parsed = Self.parse(draft, range: range) else {
+        guard let parsed = Self.parse(draft, range: range, current: value) else {
             reset()
             invalid = true
             return
@@ -42,7 +42,13 @@ struct DecimalField: View {
         reset()
     }
 
-    static func parse(_ text: String, range: ClosedRange<Double>) -> Double? {
+    static func display(_ value: Double) -> String {
+        value.formatted(.number.grouping(.never).precision(.fractionLength(0...6)))
+    }
+
+    static func parse(_ text: String, range: ClosedRange<Double>, current: Double? = nil) -> Double? {
+        // Merely blurring a rounded display must not quantize the value or disable auto headroom.
+        if let current, text == display(current) { return current }
         let normalized = text.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: ",", with: ".")
         guard let value = Double(normalized), value.isFinite, range.contains(value) else { return nil }
         return value
@@ -50,6 +56,9 @@ struct DecimalField: View {
 
     #if DEBUG
     static func check() {
+        let precise = -9.143973490337476
+        precondition(parse(display(precise), range: -60...12, current: precise) == precise)
+        precondition(parse("-8", range: -60...12, current: precise) == -8)
         precondition(parse("0.2", range: 0.1...30) == 0.2)
         precondition(parse("0,2", range: 0.1...30) == 0.2)
         precondition(parse("-4.7", range: -60...12) == -4.7)
