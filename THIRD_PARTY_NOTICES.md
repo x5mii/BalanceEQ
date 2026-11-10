@@ -43,3 +43,18 @@ Bundled source resources:
 
 [scripts/update-headphone-catalog.py](scripts/update-headphone-catalog.py)
 reproduces the conversion from the pinned upstream dataset.
+
+## AutoEq calibration measurements and targets (1.1)
+
+The calibration catalog is derived from [AutoEq](https://github.com/jaakkopasanen/AutoEq)
+at commit `7ae0f56d53074872b028649617a22bbb4232feb7`, under its MIT license.
+Copyright (c) 2018–2022 Jaakko Pasanen. The complete license is retained in
+`Sources/EQCore/Resources/AutoEq-LICENSE.txt` and the packaged resource bundle.
+Each entry credits the measurement source, exact variant, and immutable result URL.
+Published measurement and target samples are preserved; only supported paired
+parametric settings are included. Missing/unsupported pairs are listed in
+`AutoEq-Excluded.json`; `AutoEq-Provenance.txt` records the conversion.
+
+`scripts/update-calibration-catalog.py` reproduces the offline catalog. The app
+includes no AutoEq Python runtime, Sonarworks calibration data or SoundID code.
+SoundID is an independent product; BalanceEQ is not affiliated with Sonarworks.

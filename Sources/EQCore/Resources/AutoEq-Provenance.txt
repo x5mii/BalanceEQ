@@ -1,0 +1,7 @@
+AutoEq snapshot 7ae0f56d53074872b028649617a22bbb4232feb7
+https://github.com/jaakkopasanen/AutoEq
+MIT license; see AutoEq-LICENSE.txt. Measurement authors and exact result links are retained per record.
+Recommended entries: 6033; included: 4520; excluded: 1513.
+Raw and target CSV columns are retained without smoothing. Playback uses the matching ParametricEQ.txt, not the idealized equalized CSV columns.
+Target labels identify the published result rather than guessing a Harman version from its headphone name.
+Regenerate: python3 scripts/update-calibration-catalog.py

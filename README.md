@@ -7,6 +7,17 @@ A native, free macOS equalizer inspired by the workflow of Equalizer APO and Pea
 
 **[BalanceEQ 1.0.0](https://github.com/x5mii/BalanceEQ/releases/tag/v1.0.0)** is available as an **unnotarized community build**, with source and a universal download. It is ad-hoc signed, without an Apple-verified developer identity. See the [release notes](docs/releases/1.0.0.md). Hardware audio acceptance, macOS 14.2 compatibility, and Intel runtime testing remain pending; see [the acceptance record](docs/ACCEPTANCE.md). Building successfully does not establish those results.
 
+## 1.1 candidate in this checkout
+
+The local **1.1.0/build 4** candidate adds measured headphone calibration and custom targets. The public 1.0.0 release and its installer remain unchanged. See [1.1 candidate notes](docs/releases/1.1.0.md).
+
+- In **Headphone Response → Choose Headphones**, select the exact model, pads and listening mode. Applying calibration replaces the current filters with the matching published AutoEq correction. The catalog is bundled and works offline.
+- **Difference from target** draws the reference at 0 dB. **Before**, **Predicted After**, and **Target** can be toggled separately. Prediction uses published measurements plus the actual playback coefficients, excluding global preamp attenuation. It does not measure your particular pair or force the result to look flat.
+- **Custom Target** uses bell and shelf filters over the reference calibration. Add a target band, drag its point in **Response** view, or edit its frequency/gain/Q below. Reference mode suspends custom filters without deleting them. Reset Target removes them. The total remains limited to 32 filters.
+- Automatic headroom is enabled for new calibrations. Editing preamp switches to manual; **Auto headroom** re-enables the estimate. This is not a limiter.
+- Existing OPRA profiles and imported text are EQ-only unless you explicitly **Link Measurement** to an exact headphone variant. Linking preserves your current filters. Missing or outdated measurement references leave audio intact and display an explanation.
+- Saved presets retain calibration links and target-band identities. APO exports flatten the active correction into ordinary filters; they cannot carry the measurement/target editor metadata. Use BalanceEQ’s local saved presets to retain it.
+
 ## Install with one command
 
 Paste this command into Terminal. The explicit `--allow-unnotarized` option permits installing this community build; it does not disable Gatekeeper or automatically launch a rejected app:
@@ -49,7 +60,7 @@ Device enumeration is available without starting capture or changing audio setti
 
 - Start with the ten-band Flat preset, then select a band to edit frequency, gain, Q, type, or enablement. Add or remove bands, up to 32. Types are peaking, low/high shelf, low/high pass, and notch. The response graph uses the playback engine's coefficients.
 - Numeric fields keep partial typing out of the live engine: enter `0.2` (or `0,2`) for Q and press Return or Tab to apply. Escape cancels; invalid numbers retain the previous setting and mark the field. This also applies to frequency, gain, and preamp.
-- **Live audio** shows the actual stereo spectrum before and after EQ, using separate dashed gray and blue traces. Native Core Animation interpolates the curves between 20 Hz analysis updates, with reduced-motion support. Analysis runs only while this view is selected and the window is visible; it adds no playback queue. The 2,048-sample Hann FFT has sample-rate-dependent resolution (23.44 Hz at 48 kHz). **EQ response** shows calculated filter gain. These are digital signals, not acoustic headphone measurements: a Harman-target profile cannot by itself prove your headphone matches the Harman curve. Raw headphone/target measurements are not included in the profile catalog.
+- **Live audio** shows the actual stereo spectrum before and after EQ, using separate dashed gray and blue traces. Native Core Animation interpolates the curves between 20 Hz analysis updates, with reduced-motion support. Analysis runs only while this view is selected and the window is visible; it adds no playback queue. The 2,048-sample Hann FFT has sample-rate-dependent resolution (23.44 Hz at 48 kHz). **EQ response** shows calculated filter gain. These are digital signals, not acoustic headphone measurements: a Harman-target profile cannot by itself prove your headphone matches the Harman curve. The separate 1.1 calibration catalog includes matched published measurements and targets; the live spectrum still cannot establish acoustic target matching.
 - Double-click a band gain or preamp slider to reset it to 0 dB. Drag a band's frequency number up or right to increase it, down or left to decrease it. The fields below still accept exact values.
 - Choose **Start** to enable processing. macOS may request System Audio Recording permission. That permission permits the audio tap; this app processes samples in memory and does not save or upload recordings. It excludes its own playback and disables unused physical input streams. macOS still shows its audio-capture privacy indicator during processing; that indicator is not another permission request. The app never resets permissions or tries to hide system privacy controls.
 - The app follows the macOS default output. Selecting **System output** changes that default. This version processes one physical stereo output with one supported 32-bit floating-point PCM stream. Virtual/aggregate outputs, multichannel processing, per-app routing, separately routed alerts, convolution, and protected-media guarantees are outside this version's scope.
@@ -94,7 +105,7 @@ Filter 7: ON NO Fc 4000 Hz Q 5
 
 `ON` and `OFF` work for every supported type. `LSC`/`HSC` use the shelf's **center** frequency and explicit Q. `NO` alone may omit Q, which defaults to 30. `PK`/`PEQ` and shelves require both gain and Q; `HPQ`/`LPQ` require Q. Filter numbers must be positive and unique; file order is preserved. An omitted preamp defaults to 0 dB; duplicate preamp commands are rejected.
 
-`LS`/`HS` corner shelves, slope/bandwidth forms, `LP`/`HP`, GraphicEQ, Include, Device, Channel, expressions, and other commands are rejected with line numbers. The entire import must validate before replacing the current preset. This is not full Peace configuration compatibility.
+In 1.1, plain `LS`/`HS` with explicit Q are accepted as center-frequency shelves, and numeric fields accept decimal commas. Mixed separators are rejected; commas are decimal marks, not thousands separators. Slope/corner forms such as `LS 6dB`, bandwidth forms, `LP`/`HP`, GraphicEQ, Include, Device, Channel, expressions, and other commands are rejected with line numbers. The entire import must validate before replacing the current preset. This is not full Peace configuration compatibility.
 
 APO treats a trailing group of exactly three decimal digits in a frequency as a thousands group: `1.000 Hz` means 1,000 Hz. Use an exponent for unambiguous fractional frequencies, such as `31.125e0 Hz`. Exports use this form.
 

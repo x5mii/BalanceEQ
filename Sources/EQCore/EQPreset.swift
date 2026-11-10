@@ -85,6 +85,7 @@ public struct EQPreset: Identifiable, Codable, Equatable, Sendable {
     public var bands: [EQBand]
     public var version: Int
     public var attribution: String?
+    public var calibration: CalibrationSettings?
 
     public init(id: UUID = UUID(), name: String, preampDB: Double = 0,
                 bands: [EQBand] = [], version: Int = 1, attribution: String? = nil) {
@@ -94,6 +95,11 @@ public struct EQPreset: Identifiable, Codable, Equatable, Sendable {
         self.bands = bands
         self.version = version
         self.attribution = attribution
+    }
+
+    public var activeBands: [EQBand] {
+        let inactive = calibration?.customTargetEnabled == false ? Set(calibration?.customBandIDs ?? []) : []
+        return bands.filter { $0.enabled && !inactive.contains($0.id) }
     }
 
     public static var flat: EQPreset {
@@ -123,7 +129,17 @@ public struct EQPreset: Identifiable, Codable, Equatable, Sendable {
                 throw EQError.invalid("Unsupported output sample rate.")
             }
         }
-        for band in bands { try band.validate(sampleRate: sampleRate) }
+        if let calibration {
+            let ids = Set(calibration.customBandIDs)
+            guard calibration.measurementID.count == 24, calibration.measurementID.allSatisfy(\.isHexDigit),
+                  calibration.sourceCommit.count == 40, calibration.sourceCommit.allSatisfy(\.isHexDigit),
+                  ids.count == calibration.customBandIDs.count, ids.isSubset(of: Set(bands.map(\.id))),
+                  bands.filter({ ids.contains($0.id) }).allSatisfy({ [.peak, .lowShelf, .highShelf].contains($0.type) }) else {
+                throw EQError.invalid("Invalid calibration reference or custom-target bands.")
+            }
+        }
+        let active = Set(activeBands.map(\.id))
+        for band in bands { try band.validate(sampleRate: active.contains(band.id) ? sampleRate : nil) }
     }
 
     public func parameters(sampleRate: Double, bypassed: Bool = false) throws -> CEQ.EQParameters {
@@ -136,7 +152,10 @@ public struct EQPreset: Identifiable, Codable, Equatable, Sendable {
         result.count = UInt32(bands.count)
         result.preampDB = preampDB
         result.bypass = bypassed ? 1 : 0
-        for (index, band) in bands.enumerated() {
+        let active = Set(activeBands.map(\.id))
+        for (index, stored) in bands.enumerated() {
+            var band = stored
+            band.enabled = active.contains(band.id)
             guard eq_parameters_set_band(&result, UInt32(index), band.cBand) else {
                 throw EQError.invalid("The audio engine rejected band \(index + 1).")
             }
@@ -148,7 +167,7 @@ public struct EQPreset: Identifiable, Codable, Equatable, Sendable {
     public func responseDB(at frequency: Double, sampleRate: Double) -> Double {
         guard frequency.isFinite, frequency > 0, frequency < sampleRate / 2,
               (try? validate(sampleRate: sampleRate)) != nil else { return .nan }
-        return preampDB + bands.filter(\.enabled).reduce(0) {
+        return preampDB + activeBands.reduce(0) {
             $0 + eq_response_db($1.cBand, sampleRate, frequency)
         }
     }
@@ -159,7 +178,7 @@ public struct EQPreset: Identifiable, Codable, Equatable, Sendable {
             return frequencies.map { _ in .nan }
         }
         var coefficients: [[Double]] = []
-        for band in bands where band.enabled {
+        for band in activeBands {
             var c = [Double](repeating: 0, count: 5)
             guard eq_coefficients(band.cBand, sampleRate, &c) else { return frequencies.map { _ in .nan } }
             coefficients.append(c)
@@ -181,7 +200,7 @@ public struct EQPreset: Identifiable, Codable, Equatable, Sendable {
         let upper = min(20_000, sampleRate / 2 * 0.999)
         // ponytail: sampled response estimate; use peak optimization if precise headroom is needed.
         let frequencies = (0...1_024).map { 10 * pow(upper / 10, Double($0) / 1_024) }
-            + bands.filter(\.enabled).map(\.frequency)
+            + activeBands.map(\.frequency)
         let peak = responseDB(at: frequencies, sampleRate: sampleRate).reduce(0.0) { max($0, $1 - preampDB) }
         return max(-60, min(0, -peak))
     }

@@ -139,12 +139,15 @@ private struct MainWindowVisibility: NSViewRepresentable {
             observers.removeAll()
             guard let window else { audio?.setMeteringEnabled(false); return }
             for name in [NSWindow.didChangeOcclusionStateNotification, NSWindow.didMiniaturizeNotification,
-                         NSWindow.didDeminiaturizeNotification, NSWindow.willCloseNotification] {
+                         NSWindow.didDeminiaturizeNotification, NSWindow.didBecomeKeyNotification,
+                         NSWindow.didBecomeMainNotification, NSWindow.willCloseNotification] {
                 observers.append(NotificationCenter.default.addObserver(forName: name, object: window, queue: .main) { [weak self] notification in
                     MainActor.assumeIsolated {
                         guard let self else { return }
+                        let activated = notification.name == NSWindow.didBecomeKeyNotification ||
+                            notification.name == NSWindow.didBecomeMainNotification
                         let visible = notification.name != NSWindow.willCloseNotification &&
-                            self.window?.occlusionState.contains(.visible) == true && self.window?.isMiniaturized == false
+                            (activated || self.window?.occlusionState.contains(.visible) == true) && self.window?.isMiniaturized == false
                         self.audio?.setMeteringEnabled(visible)
                     }
                 })

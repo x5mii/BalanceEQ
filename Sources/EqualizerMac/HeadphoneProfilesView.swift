@@ -80,7 +80,7 @@ struct HeadphoneProfilesView: View {
                 }
                 VStack(alignment: .leading, spacing: 3) {
                     Link("OPRA · Open Profiles for Revealing Audio", destination: HeadphoneCatalog.upstreamURL)
-                    Text("Community headphone tunings · CC BY-SA 4.0. Profiles outside this app’s supported filter limits are omitted.")
+                    Text("EQ-only community tunings · CC BY-SA 4.0. Profiles outside this app’s supported filter limits are omitted.")
                         .font(.caption2).foregroundStyle(.secondary)
                 }
             }.font(.caption)

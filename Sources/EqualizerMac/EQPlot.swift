@@ -5,6 +5,7 @@ import QuartzCore
 
 /// Core Animation interpolates fixed-topology paths; SwiftUI doesn't redraw at display rate.
 struct EQPlot: NSViewRepresentable {
+    var target: [Double] = []
     var before: [Double] = []
     let after: [Double]
     let range: ClosedRange<Double>
@@ -14,16 +15,18 @@ struct EQPlot: NSViewRepresentable {
 
     func makeNSView(context: Context) -> PlotView { PlotView() }
     func updateNSView(_ view: PlotView, context: Context) {
-        view.update(before: before, after: after, range: range, muted: muted,
+        view.update(target: target, before: before, after: after, range: range, muted: muted,
                     spectrum: spectrum, reduceMotion: reduceMotion)
     }
     static func dismantleNSView(_ view: PlotView, coordinator: ()) { view.stopAnimations() }
 
     final class PlotView: NSView {
+        private let targetLine = CAShapeLayer()
         private let inputLine = CAShapeLayer()
         private let outputLine = CAShapeLayer()
         private let fill = CAShapeLayer()
         private let gradient = CAGradientLayer()
+        private var target: [Double] = []
         private var before: [Double] = []
         private var after: [Double] = []
         private var range: ClosedRange<Double> = -100...0
@@ -40,12 +43,14 @@ struct EQPlot: NSViewRepresentable {
             gradient.startPoint = CGPoint(x: 0.5, y: 0)
             gradient.endPoint = CGPoint(x: 0.5, y: 1)
             layer?.addSublayer(gradient)
-            for line in [inputLine, outputLine] {
+            for line in [inputLine, outputLine, targetLine] {
                 line.fillColor = nil
                 line.lineCap = .round
                 line.lineJoin = .round
                 layer?.addSublayer(line)
             }
+            targetLine.lineWidth = 1.5
+            targetLine.lineDashPattern = [8, 3]
             inputLine.lineWidth = 1.25
             inputLine.lineDashPattern = [4, 4]
             outputLine.lineWidth = 2.25
@@ -54,13 +59,14 @@ struct EQPlot: NSViewRepresentable {
         required init?(coder: NSCoder) { nil }
         override func hitTest(_ point: NSPoint) -> NSView? { nil }
 
-        func update(before: [Double], after: [Double], range: ClosedRange<Double>, muted: Bool,
+        func update(target: [Double], before: [Double], after: [Double], range: ClosedRange<Double>, muted: Bool,
                     spectrum: Bool, reduceMotion: Bool) {
             let reset = self.range != range || self.spectrum != spectrum
             self.range = range
             let styleChanged = self.muted != muted
             self.muted = muted
             self.spectrum = spectrum
+            self.target = target
             self.before = before
             self.after = after
             if styleChanged { colors() }
@@ -73,7 +79,7 @@ struct EQPlot: NSViewRepresentable {
             plottedSize = bounds.size
             CATransaction.begin()
             CATransaction.setDisableActions(true)
-            for child in [gradient, inputLine, outputLine, fill] { child.frame = bounds }
+            for child in [gradient, inputLine, outputLine, fill, targetLine] { child.frame = bounds }
             CATransaction.commit()
             drawPaths(animated: false)
         }
@@ -85,6 +91,7 @@ struct EQPlot: NSViewRepresentable {
                 CATransaction.begin()
                 CATransaction.setDisableActions(true)
                 let color = muted ? NSColor.secondaryLabelColor : NSColor.systemBlue
+                targetLine.strokeColor = NSColor.systemGreen.cgColor
                 outputLine.strokeColor = color.cgColor
                 inputLine.strokeColor = NSColor.secondaryLabelColor.withAlphaComponent(0.65).cgColor
                 gradient.colors = [color.withAlphaComponent(0.24).cgColor, color.withAlphaComponent(0.015).cgColor]
@@ -102,7 +109,7 @@ struct EQPlot: NSViewRepresentable {
                 area.addLine(to: CGPoint(x: 0, y: bounds.height))
                 area.closeSubpath()
             }
-            for (line, path) in [(inputLine, input), (outputLine, output), (fill, area as CGPath)] {
+            for (line, path) in [(inputLine, input), (outputLine, output), (fill, area as CGPath), (targetLine, Self.path(target, in: bounds.size, range: range))] {
                 let previous = line.presentation()?.path ?? line.path
                 CATransaction.begin()
                 CATransaction.setDisableActions(true)
@@ -120,7 +127,7 @@ struct EQPlot: NSViewRepresentable {
             }
         }
 
-        func stopAnimations() { for shape in [inputLine, outputLine, fill] { shape.removeAllAnimations() } }
+        func stopAnimations() { for shape in [inputLine, outputLine, fill, targetLine] { shape.removeAllAnimations() } }
 
         static func path(_ values: [Double], in size: CGSize, range: ClosedRange<Double>) -> CGPath {
             let path = CGMutablePath()

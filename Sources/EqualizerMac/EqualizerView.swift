@@ -11,7 +11,8 @@ struct EqualizerView: View {
     @State private var showingPresets = false
     @State private var showingHeadphones = false
     @State private var showingCredits = false
-    @State private var liveSpectrum = false
+    @State private var graphMode = 0
+    @State private var showCorrectionBands = false
     @State private var showingGraphHelp = false
 
     var body: some View {
@@ -21,12 +22,13 @@ struct EqualizerView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     controls
                     HStack {
-                        Picker("Graph", selection: $liveSpectrum) {
-                            Text("EQ response").tag(false)
-                            Text("Live audio").tag(true)
-                        }.pickerStyle(.segmented).labelsHidden().frame(width: 220)
+                        Picker("Graph", selection: $graphMode) {
+                            Text("Headphone Response").tag(0)
+                            Text("EQ response").tag(1)
+                            Text("Live audio").tag(2)
+                        }.pickerStyle(.segmented).labelsHidden().frame(width: 380)
                         Spacer()
-                        Text(liveSpectrum ? "Before / after EQ · dBFS" : "Calculated filter response · dB")
+                        Text(graphMode == 2 ? "Digital signal · dBFS" : graphMode == 1 ? "Filter gain · dB" : "Headphone calibration")
                             .font(.caption).foregroundStyle(.secondary)
                         Button { showingGraphHelp = true } label: { Image(systemName: "info.circle") }
                             .buttonStyle(.plain).accessibilityLabel("About the graphs and Harman targets")
@@ -35,7 +37,9 @@ struct EqualizerView: View {
                                     .font(.callout).padding(20).frame(width: 360)
                             }
                     }
-                    if liveSpectrum {
+                    if graphMode == 0 {
+                        CalibrationPanel(model: model, sampleRate: audio.sampleRate > 0 ? audio.sampleRate : 48000, bypassed: model.bypassed, visible: audio.isWindowVisible)
+                    } else if graphMode == 2 {
                         SpectrumGraph(model: audio.spectrum, running: audio.isRunning)
                             .frame(height: 182)
                     } else {
@@ -43,7 +47,18 @@ struct EqualizerView: View {
                         .equatable()
                         .frame(height: 182)
                     }
-                    bandSection
+                    if graphMode != 0 || model.preset.calibration == nil || showCorrectionBands {
+                        bandSection
+                    }
+                    if graphMode == 0 && model.preset.calibration != nil {
+                        HStack {
+                            Text("\(model.preset.bands.count) filters · \(model.preset.calibration?.customBandIDs.count ?? 0) custom-target bands")
+                                .font(.caption).foregroundStyle(.secondary)
+                            Spacer()
+                            Button(showCorrectionBands ? "Hide correction sliders" : "Show correction sliders") { showCorrectionBands.toggle() }
+                                .buttonStyle(.link).font(.caption)
+                        }
+                    }
                     inspector
                     footer
                 }.padding(.horizontal, 20).padding(.vertical, 12)
@@ -56,10 +71,11 @@ struct EqualizerView: View {
         .tint(.blue)
         .onAppear {
             appDelegate.reopen = { openWindow(id: "equalizer") }
-            audio.setAnalysisEnabled(liveSpectrum)
+            audio.setAnalysisEnabled(graphMode == 2)
         }
         .onDisappear { audio.setAnalysisEnabled(false) }
-        .onChange(of: liveSpectrum) { _, enabled in audio.setAnalysisEnabled(enabled) }
+        .onChange(of: graphMode) { _, mode in audio.setAnalysisEnabled(mode == 2) }
+        .onChange(of: audio.sampleRate) { _, _ in model.changed() }
         .alert("BalanceEQ", isPresented: Binding(get: { model.message != nil }, set: { if !$0 { model.message = nil } })) {
             Button("OK") { model.message = nil }
         } message: { Text(model.message ?? "") }
@@ -122,9 +138,9 @@ struct EqualizerView: View {
             VStack(alignment: .leading, spacing: 6) {
                 sectionLabel("PREAMP")
                 HStack(spacing: 9) {
-                    NativeGainSlider(value: $model.preset.preampDB, enabled: true, label: "Preamp gain",
+                    NativeGainSlider(value: Binding(get: { model.preset.preampDB }, set: model.setPreamp), enabled: true, label: "Preamp gain",
                                      range: -60...12, vertical: false).frame(width: 108, height: 24)
-                    DecimalField(label: "Preamp in decibels", value: $model.preset.preampDB, range: -60...12)
+                    DecimalField(label: "Preamp in decibels", value: Binding(get: { model.preset.preampDB }, set: model.setPreamp), range: -60...12)
                         .textFieldStyle(.roundedBorder).frame(width: 54).accessibilityLabel("Preamp in decibels")
                     Text("dB").foregroundStyle(.secondary).font(.caption).fixedSize()
                 }
@@ -137,7 +153,7 @@ struct EqualizerView: View {
     private var bandSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                sectionLabel("FREQUENCY BANDS")
+                sectionLabel("CORRECTION BANDS")
                 Text("\(model.preset.bands.count) / 32").font(.caption.monospacedDigit()).foregroundStyle(.tertiary)
                 Spacer()
                 Button(action: model.addBand) { Label("Add band", systemImage: "plus") }
@@ -152,6 +168,8 @@ struct EqualizerView: View {
                                   sampleRate: audio.isRunning && !model.bypassed ? audio.sampleRate : nil) {
                             model.selectedBandID = band.id
                         }
+                        .opacity(model.preset.calibration?.customBandIDs.contains(band.id) == true && model.preset.calibration?.customTargetEnabled == false ? 0.45 : 1)
+                        .help(model.preset.calibration?.customBandIDs.contains(band.id) == true ? "Custom-target filter; active only in Custom Target mode." : "Base correction filter")
                     }
                 }.padding(8)
             }
@@ -164,9 +182,9 @@ struct EqualizerView: View {
         if let index = model.preset.bands.firstIndex(where: { $0.id == model.selectedBandID }) {
             HStack(spacing: 20) {
                 VStack(alignment: .leading, spacing: 6) {
-                    sectionLabel("FILTER")
+                    sectionLabel(model.preset.calibration?.customBandIDs.contains(model.preset.bands[index].id) == true ? "TARGET FILTER" : "FILTER")
                     Picker("Filter type", selection: $model.preset.bands[index].type) {
-                        ForEach(EQFilterType.allCases, id: \.self) { Text($0.label).tag($0) }
+                        ForEach((model.preset.calibration?.customBandIDs.contains(model.preset.bands[index].id) == true ? [.peak, .lowShelf, .highShelf] : EQFilterType.allCases), id: \.self) { Text($0.label).tag($0) }
                     }.labelsHidden().frame(width: 138)
                 }
                 numericField("FREQUENCY", value: $model.preset.bands[index].frequency, unit: "Hz", width: 80, range: 10...(audio.isRunning && !model.bypassed && model.preset.bands[index].enabled ? min(20_000, audio.sampleRate / 2 - 0.01) : 20_000))
@@ -185,6 +203,7 @@ struct EqualizerView: View {
     private var footer: some View {
         HStack(alignment: .top, spacing: 20) {
             VStack(alignment: .leading, spacing: 5) {
+                if let notice = model.importNotice { Text(notice).font(.caption).foregroundStyle(.blue) }
                 Label(audio.status, systemImage: audio.isRunning ? "speaker.wave.2" : "info.circle")
                     .font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
                 HStack(spacing: 10) {
@@ -429,7 +448,7 @@ private struct ResponseGraph: View, Equatable {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Equalizer frequency response")
-        .accessibilityValue(bypassed ? "Bypassed. Flat response." : "\(preset.bands.filter(\.enabled).count) enabled filters. Preamp \(String(format: "%.1f", preset.preampDB)) decibels. Edit exact values with the band controls below.")
+        .accessibilityValue(bypassed ? "Bypassed. Flat response." : "\(preset.activeBands.count) enabled filters. Preamp \(String(format: "%.1f", preset.preampDB)) decibels. Edit exact values with the band controls below.")
     }
 }
 

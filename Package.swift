@@ -10,6 +10,6 @@ let package = Package(
         .target(name: "EQCore", dependencies: ["CEQ"], resources: [.process("Resources")]),
         .executableTarget(name: "EqualizerMac", dependencies: ["EQCore", "CEQ"], linkerSettings: [.linkedFramework("AppKit"), .linkedFramework("CoreAudio")]),
         .testTarget(name: "CEQTests", dependencies: ["CEQ"]),
-        .testTarget(name: "EQCoreTests", dependencies: ["EQCore"]),
+        .testTarget(name: "EQCoreTests", dependencies: ["EQCore"], resources: [.copy("Fixtures")]),
     ]
 )

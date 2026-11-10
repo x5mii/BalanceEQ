@@ -75,7 +75,13 @@ final class AudioController: ObservableObject {
     func shutdown() { worker.shutdown() }
     func update(preset: EQPreset, bypassed: Bool) { worker.update(preset: preset, bypassed: bypassed) }
     func selectOutput(_ id: AudioDeviceID) { worker.selectOutput(id) }
-    func setMeteringEnabled(_ enabled: Bool) { worker.setMeteringEnabled(enabled) }
+    @Published private(set) var isWindowVisible = false
+    func setMeteringEnabled(_ enabled: Bool) {
+        DispatchQueue.main.async { [weak self] in
+            if self?.isWindowVisible != enabled { self?.isWindowVisible = enabled }
+        }
+        worker.setMeteringEnabled(enabled)
+    }
     func setAnalysisEnabled(_ enabled: Bool) { worker.setAnalysisEnabled(enabled) }
 
     private func setStarting(_ starting: Bool) {

@@ -27,8 +27,8 @@ public enum APOCodec {
                 let values = line[line.index(after: colon)...].split(whereSeparator: \.isWhitespace).map(String.init)
                 if command == ["preamp"] {
                     guard !foundPreamp else { throw EQError.invalid("Duplicate Preamp command.") }
-                    guard values.count == 2, values[1].lowercased() == "db", let gain = Double(values[0]) else {
-                        throw EQError.invalid("Expected Preamp: <gain> dB.")
+                    guard values.count == 2, values[1].lowercased() == "db", let gain = number(values[0]) else {
+                        throw EQError.invalid("Expected Preamp: <gain> dB; invalid value: \(values.joined(separator: " ")).")
                     }
                     preset.preampDB = gain
                     foundPreamp = true
@@ -54,32 +54,32 @@ public enum APOCodec {
         let tokens = values.map { $0.lowercased() }
         guard tokens.count >= 5, ["on", "off"].contains(tokens[0]), tokens[2] == "fc", tokens[4] == "hz",
               let frequency = apoFrequency(tokens[3]) else {
-            throw EQError.invalid("Expected Filter <n>: ON|OFF <type> Fc <frequency> Hz …")
+            throw EQError.invalid("Expected ON|OFF <type> Fc <frequency> Hz; got: \(values.joined(separator: " ")). Shelf slope/corner forms are unsupported.")
         }
         let type: EQFilterType
         switch tokens[1] {
         case "pk", "peq": type = .peak
-        case "lsc": type = .lowShelf
-        case "hsc": type = .highShelf
+        case "ls", "lsc": type = .lowShelf
+        case "hs", "hsc": type = .highShelf
         case "lpq": type = .lowPass
         case "hpq": type = .highPass
         case "no": type = .notch
-        default: throw EQError.invalid("Unsupported filter type. Use PK/PEQ, LSC/HSC, HPQ/LPQ, or NO with Q; shelf slopes and bandwidth forms are not supported.")
+        default: throw EQError.invalid("Unsupported filter type '\(values[1])'. Use PK/PEQ, LS/HS/LSC/HSC, HPQ/LPQ, or NO with Q; shelf slopes and bandwidth forms are not supported.")
         }
         var gain = 0.0
         var q = 30.0 // Equalizer APO's default for a notch without an explicit Q.
         switch type {
         case .peak, .lowShelf, .highShelf:
             guard tokens.count == 10, tokens[5] == "gain", tokens[7] == "db", tokens[8] == "q",
-                  let parsedGain = Double(tokens[6]), let parsedQ = Double(tokens[9]) else {
-                throw EQError.invalid("This filter requires Gain <gain> dB Q <Q>; slope and bandwidth forms are unsupported.")
+                  let parsedGain = number(tokens[6]), let parsedQ = number(tokens[9]) else {
+                throw EQError.invalid("Expected numeric Gain <gain> dB Q <Q>; got: \(values.joined(separator: " ")). Slope/bandwidth forms are unsupported.")
             }
             gain = parsedGain
             q = parsedQ
         case .lowPass, .highPass, .notch:
             if type == .notch && tokens.count == 5 { break }
-            guard tokens.count == 7, tokens[5] == "q", let parsedQ = Double(tokens[6]) else {
-                throw EQError.invalid("This filter requires Q <Q> (optional for NO).")
+            guard tokens.count == 7, tokens[5] == "q", let parsedQ = number(tokens[6]) else {
+                throw EQError.invalid("Expected numeric Q <Q> (optional for NO); got: \(values.joined(separator: " ")).")
             }
             q = parsedQ
         }
@@ -88,8 +88,15 @@ public enum APOCodec {
         return band
     }
 
+    /// Locale-independent decimals. Commas are decimal marks, never grouping separators.
+    private static func number(_ token: String) -> Double? {
+        guard !(token.contains(",") && token.contains(".")),
+              let value = Double(token.replacingOccurrences(of: ",", with: ".")), value.isFinite else { return nil }
+        return value
+    }
+
     private static func apoFrequency(_ token: String) -> Double? {
-        guard var frequency = Double(token) else { return nil }
+        guard var frequency = number(token) else { return nil }
         // APO treats a trailing group of exactly three digits as thousands, unless an exponent is present.
         if !token.contains("e"), token.count >= 5, token[token.index(token.endIndex, offsetBy: -4)] == "." {
             frequency *= 1_000
@@ -100,7 +107,10 @@ public enum APOCodec {
     public static func export(_ preset: EQPreset) -> String {
         var lines = ["# BalanceEQ — supported Equalizer APO filters", "Preamp: \(preset.preampDB) dB"]
         if let attribution = preset.attribution { lines.insert("# Attribution: \(attribution)", at: 1) }
-        for (index, band) in preset.bands.enumerated() {
+        let active = Set(preset.activeBands.map(\.id))
+        for (index, stored) in preset.bands.enumerated() {
+            var band = stored
+            band.enabled = active.contains(band.id)
             let type: String
             switch band.type {
             case .peak: type = "PK"
