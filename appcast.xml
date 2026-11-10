@@ -4,17 +4,17 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
     <channel>
         <title>BalanceEQ</title>
         <item>
-            <title>1.1.2</title>
-            <pubDate>Tue, 10 Nov 2026 15:32:53 +0100</pubDate>
-            <link>https://github.com/x5mii/BalanceEQ/releases/tag/v1.1.2</link>
-            <sparkle:version>6</sparkle:version>
-            <sparkle:shortVersionString>1.1.2</sparkle:shortVersionString>
+            <title>1.2.0</title>
+            <pubDate>Tue, 10 Nov 2026 15:56:52 +0100</pubDate>
+            <link>https://github.com/x5mii/BalanceEQ/releases/tag/v1.2.0</link>
+            <sparkle:version>7</sparkle:version>
+            <sparkle:shortVersionString>1.2.0</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.2</sparkle:minimumSystemVersion>
-            <description><![CDATA[<h2>BalanceEQ 1.1.2</h2><p>Adds Check for Updates to the app and menu bar. Updates verify signatures, preserve presets, and install only when you choose. No background polling or profiling.</p><p>This community build is ad-hoc signed and unnotarized. Audio stops during restart; choose Start EQ afterward. macOS may request audio permission again.</p>]]></description>
-            <enclosure url="https://github.com/x5mii/BalanceEQ/releases/download/v1.1.2/BalanceEQ.zip" length="14654143" type="application/octet-stream" sparkle:edSignature="R4T48Gx05SYo6eWhvNBSojtyWMX7duiOpZSeed0LFZ0tb+++01k/R8anRk0h+Ep1H/FeZkee5ZBMje/kMDwJCg=="></enclosure>
+            <description><![CDATA[<h2>BalanceEQ 1.2.0</h2><p>Choose your headphones, choose Neutral, Harman or Custom, then Apply Correction. One main graph compares the predicted result with your target. Manual EQ is under Advanced; sliders always sort from low to high frequencies. Custom points support dragging and mouse-wheel Q.</p><p>Neutral uses the matched reference without added preference bass. Calibration predicts the model response, not guaranteed acoustic flatness. Existing presets are preserved.</p><p>This community build is ad-hoc signed and unnotarized. Audio stops during restart; choose Start EQ afterward. macOS may request audio permission again.</p>]]></description>
+            <enclosure url="https://github.com/x5mii/BalanceEQ/releases/download/v1.2.0/BalanceEQ.zip" length="14737335" type="application/octet-stream" sparkle:edSignature="7qLKLHjUmJpUo1hsipTStNmQ81xAlwrmNgub4OqM+Sl4bTE35LBybOyR4PIVmPCqvw3VWNVUO+aYkO1yNlzCBA=="></enclosure>
         </item>
     </channel>
 </rss><!-- sparkle-signatures:
-edSignature: 5pGdw/lOtiluavLjaf7I2tsNpJPkjORVlvav77eUgp0vwpwl+cGSYeuzlax15JJPWFDAxUVo3ch+pZYFPDTaAw==
-length: 1519
+edSignature: pZyCfauoWPSqS7UrmJfsxHbc2gNzn//q3AEE/g9NfoXv+qOkxLJLjfV1rvmyI2JqjExdSOgxOP5O/HWHyfkFBg==
+length: 1808
 -->
