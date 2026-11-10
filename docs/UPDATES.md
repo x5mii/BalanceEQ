@@ -11,9 +11,9 @@ The normal application termination path saves presets and releases Core Audio;
 the relaunched app starts with EQ stopped, as on any ordinary launch.
 
 The feed lives at `https://raw.githubusercontent.com/x5mii/BalanceEQ/updates/appcast.xml`.
-The dedicated `updates` branch contains only the signed feed. It initially has
-no update items; no updater-enabled release has been published yet. A candidate
-newer than the feed reports that it is up to date. Existing 1.1.1 apps have no
+The dedicated `updates` branch contains only the signed feed, starting with
+1.1.2/build 6. A candidate newer than the feed reports that it is up to date.
+Existing 1.1.1 apps have no
 updater and need one initial manual installation of 1.1.2 or later.
 
 ## Keys and signing

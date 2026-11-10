@@ -5,7 +5,7 @@
 
 A native, free macOS equalizer inspired by the workflow of Equalizer APO and Peace. SwiftUI controls sit above a small C audio engine. There are no accounts, ads, subscriptions, telemetry, installed audio drivers, or third-party audio runtime packages. Native software updates use the bundled Sparkle framework.
 
-**[BalanceEQ 1.1.1](https://github.com/x5mii/BalanceEQ/releases/tag/v1.1.1)** is available as an **unnotarized community build**, with source and a universal download. It is ad-hoc signed, without an Apple-verified developer identity. See the [release notes](docs/releases/1.1.1.md). Hardware audio acceptance, macOS 14.2 compatibility, and Intel runtime testing remain pending; see [the acceptance record](docs/ACCEPTANCE.md). Building successfully does not establish those results.
+**[BalanceEQ 1.1.2](https://github.com/x5mii/BalanceEQ/releases/tag/v1.1.2)** is available as an **unnotarized community build**, with source and a universal download. It is ad-hoc signed, without an Apple-verified developer identity. See the [release notes](docs/releases/1.1.2.md). Hardware audio acceptance, macOS 14.2 compatibility, and Intel runtime testing remain pending; see [the acceptance record](docs/ACCEPTANCE.md). Building successfully does not establish those results.
 
 ## Headphone calibration and custom targets
 
@@ -18,20 +18,20 @@ A native, free macOS equalizer inspired by the workflow of Equalizer APO and Pea
 - Existing OPRA profiles and imported text are EQ-only unless you explicitly **Link Measurement** to an exact headphone variant. Linking preserves your current filters. Missing or outdated measurement references leave audio intact and display an explanation.
 - Saved presets retain calibration links and target-band identities. APO exports flatten the active correction into ordinary filters; they cannot carry the measurement/target editor metadata. Use BalanceEQ’s local saved presets to retain it.
 
-## In-app updates (1.1.2 candidate)
+## In-app updates
 
 Use **Check for Updates…** in the menu-bar menu, application menu, or About window. Sparkle checks the signed feed, presents a newer release, verifies its signature, and installs/relaunches after you choose to update. No Terminal command is needed once this version is installed. Checks are manual; there are no background polls, automatic installations, or system-profile submissions.
 
 Presets stay in the existing Application Support folder. Audio stops for the restart; choose **Start EQ** afterward. Ad-hoc community builds can still trigger macOS audio permission or Gatekeeper prompts. Update signatures authenticate releases to the app's embedded key; they do not provide Apple notarization. Errors leave the existing app in place.
 
-Existing 1.1.1 and older apps need one initial download/install to gain this feature. The updater-enabled 1.1.2 candidate has not yet been released. [Maintainer instructions](docs/UPDATES.md) describe signed-feed publication.
+Existing 1.1.1 and older apps need one initial download/install to gain this feature. Version 1.1.2 is the first release with the built-in updater. [Maintainer instructions](docs/UPDATES.md) describe signed-feed publication.
 
 ## Install with one command
 
 Paste this command into Terminal. The explicit `--allow-unnotarized` option permits installing this community build; it does not disable Gatekeeper or automatically launch a rejected app:
 
 ```sh
-/bin/bash -c 'set -e; installer=$(curl -fsSL https://raw.githubusercontent.com/x5mii/BalanceEQ/v1.1.1/scripts/install.sh); /bin/bash -c "$installer" -- --allow-unnotarized'
+/bin/bash -c 'set -e; installer=$(curl -fsSL https://raw.githubusercontent.com/x5mii/BalanceEQ/v1.1.2/scripts/install.sh); /bin/bash -c "$installer" -- --allow-unnotarized'
 ```
 
 The command fetches the complete [installer script](scripts/install.sh) before running it. The installer downloads the latest universal GitHub release, verifies its SHA-256 checksum and code integrity, checks Gatekeeper, then installs into `~/Applications/BalanceEQ.app`. Ad-hoc signature verification checks integrity, not the developer’s identity. If Gatekeeper rejects the build, installation requires the explicit option above and the app is not launched automatically. No sudo, Homebrew, Xcode, or account is needed. macOS 14.2 or later is required.
@@ -52,7 +52,7 @@ The deployment target is macOS 14.2 or later, for Apple Silicon and Intel. Build
 open "build/BalanceEQ.app"
 ```
 
-The build script creates a universal `arm64` + `x86_64` app by default. For a faster local Apple Silicon build, run `ARCHITECTURES=arm64 ./scripts/build-app.sh`. Local builds are **ad-hoc signed**, without a Developer ID or notarization. Version 1.1.1 is distributed in this form; the release notes disclose its limitations.
+The build script creates a universal `arm64` + `x86_64` app by default. For a faster local Apple Silicon build, run `ARCHITECTURES=arm64 ./scripts/build-app.sh`. Local builds are **ad-hoc signed**, without a Developer ID or notarization. Version 1.1.2 is distributed in this form; the release notes disclose its limitations.
 
 For repeat development builds, `LOCAL_SIGNING_IDENTITY="your code-signing identity" ./scripts/build-app.sh` uses an existing persistent local certificate without a timestamp. Keep the same identity and bundle identifier between builds; ad-hoc signatures change with the executable and can cause macOS to ask for capture permission again. Future notarized releases need Developer ID signing and notarization. The app keeps its original `org.equalizerformac.app` identifier and `EqualizerForMac` data folder so the BalanceEQ rename preserves existing presets.
 
@@ -129,7 +129,7 @@ SIGNING_IDENTITY="Developer ID Application: Your Name (TEAMID)" \
 NOTARY_PROFILE="your-notary-profile" ./scripts/notarize.sh
 ```
 
-The script reruns checks, builds both architectures, signs with the hardened runtime, submits to Apple, staples the ticket, checks Gatekeeper, and creates `build/BalanceEQ.zip` with `build/BalanceEQ.zip.sha256`. The checksum contains the portable archive filename. It does not publish a GitHub release. The signed distribution acceptance checks remain pending. Versions 1.0.0, 1.1.0 and 1.1.1 were authorized for community distribution without notarization; this does not mark those checks complete.
+The script reruns checks, builds both architectures, signs with the hardened runtime, submits to Apple, staples the ticket, checks Gatekeeper, and creates `build/BalanceEQ.zip` with `build/BalanceEQ.zip.sha256`. The checksum contains the portable archive filename. It does not publish a GitHub release. The signed distribution acceptance checks remain pending. Versions 1.0.0 through 1.1.2 were authorized for community distribution without notarization; this does not mark those checks complete.
 
 Publish those two files as assets named exactly **BalanceEQ.zip** and **BalanceEQ.zip.sha256** on a normal GitHub Release marked **Latest**, with a tag pointing to the source revision used to build it. GitHub's `/releases/latest/download/BalanceEQ.zip` URL lets the installer find new versions without changing the install command. Drafts, prereleases, and CI artifacts do not resolve through that URL. The default installer requires Gatekeeper approval; this unnotarized release requires the explicit `--allow-unnotarized` installation option and manual first launch. Once Developer ID signing is available, keep the same identity across releases so macOS can recognize app updates.
 
