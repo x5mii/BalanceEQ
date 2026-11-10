@@ -1,9 +1,13 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 # Release acceptance record
 
-Status: **1.0.0 community distribution authorized without notarization; full hardware and signed-distribution acceptance incomplete**.
+Status: **1.1.0 community distribution authorized without notarization; full hardware and signed-distribution acceptance incomplete**.
 
 This record separates deterministic checks from actual playback, supported-platform acceptance, and distribution. Only mark a checkbox after recording evidence from the named build and device. The universal build and passing DSP tests cannot establish real-device volume, latency, recovery, or protected-media behavior.
+
+## 1.1.0 publication decision — 2026-11-10
+
+The maintainer explicitly requested publishing 1.1.0 and updating the one-command installer. The verified build 4 is promoted unchanged as the latest community release, with its source and unnotarized status disclosed. The README command now uses the v1.1.0 installer; the installer already resolves GitHub's latest release, so older commands update too. Public v1.0.0 assets are retained. This authorization does not mark outstanding device, accessibility, signing or clean-install acceptance complete.
 
 ## 1.1.0 local candidate — 2026-11-10
 
