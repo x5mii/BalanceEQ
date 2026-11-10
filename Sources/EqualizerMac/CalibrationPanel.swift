@@ -94,40 +94,52 @@ struct CalibrationPanel: View {
             }
             .overlay {
                 if custom && !relative && target {
-                    GeometryReader { geometry in
-                        let width = max(1, geometry.size.width - 60)
-                        let height = max(1, geometry.size.height - 58)
-                        let ids = Set(model.preset.calibration?.customBandIDs ?? [])
-                        ForEach(model.preset.bands.filter { ids.contains($0.id) && $0.frequency >= 20 && $0.frequency <= maximum }) { band in
-                            let index = min(384, max(0, Int((log(band.frequency / 20) / log(maximum / 20) * 384).rounded())))
-                            Button { model.selectedBandID = band.id } label: {
-                                Circle().fill(band.enabled ? Color.green : Color.gray)
-                                    .overlay(Circle().stroke(.background, lineWidth: model.selectedBandID == band.id ? 3 : 1))
-                                    .frame(width: 14, height: 14).padding(7).contentShape(Rectangle())
-                            }.buttonStyle(.plain)
-                                .position(x: 40 + log(band.frequency / 20) / log(maximum / 20) * width,
-                                          y: 32 + (range.upperBound - max(range.lowerBound, min(range.upperBound, response.target[index]))) / 60 * height)
-                                .highPriorityGesture(DragGesture(minimumDistance: 1, coordinateSpace: .named("calibrationGraph")).onChanged { gesture in
-                                    if dragStart == nil { dragStart = band; model.selectedBandID = band.id }
-                                    guard let start = dragStart, let i = model.preset.bands.firstIndex(where: { $0.id == start.id }) else { return }
-                                    var value = model.preset
-                                    value.bands[i].frequency = max(20, min(maximum, start.frequency * pow(maximum / 20, gesture.translation.width / width)))
-                                    value.bands[i].gainDB = max(-24, min(24, start.gainDB - gesture.translation.height / height * 60))
-                                    model.preset = value
-                                }.onEnded { _ in dragStart = nil })
-                                .accessibilityElement().accessibilityLabel("Target \(band.type.title), \(Int(band.frequency)) hertz")
-                                .accessibilityValue("\(band.gainDB.formatted()) decibels")
-                                .accessibilityAction { model.selectedBandID = band.id }
-                                .accessibilityAdjustableAction { direction in
-                                    guard let i = model.preset.bands.firstIndex(where: { $0.id == band.id }) else { return }
-                                    model.preset.bands[i].gainDB = max(-24, min(24, band.gainDB + (direction == .increment ? 0.1 : -0.1)))
-                                }
-                        }
-                    }.coordinateSpace(name: "calibrationGraph")
+                    targetHandles(response, maximum: maximum)
                 }
             }
             .frame(height: 190)
             .accessibilityElement(children: .contain)
             .accessibilityLabel("Predicted headphone response. \(relative ? "Zero decibels is the target." : "Published measurement reference.")")
     }
+
+    private func targetHandles(_ response: CalibrationCurve.Response, maximum: Double) -> some View {
+        let ids = Set(model.preset.calibration?.customBandIDs ?? [])
+        let bands = model.preset.bands.filter { ids.contains($0.id) && $0.frequency >= 20 && $0.frequency <= maximum }
+        return GeometryReader { geometry in
+            ForEach(bands) { band in
+                targetHandle(band, response: response, maximum: maximum, size: geometry.size)
+            }
+        }.coordinateSpace(name: "calibrationGraph")
+    }
+
+    private func targetHandle(_ band: EQBand, response: CalibrationCurve.Response, maximum: Double, size: CGSize) -> some View {
+        let width = max(1, Double(size.width) - 60)
+        let height = max(1, Double(size.height) - 58)
+        let fraction = log(band.frequency / 20) / log(maximum / 20)
+        let index = min(384, max(0, Int((fraction * 384).rounded())))
+        let level = max(range.lowerBound, min(range.upperBound, response.target[index]))
+        let position = CGPoint(x: 40 + fraction * width, y: 32 + (range.upperBound - level) / 60 * height)
+        return Button { model.selectedBandID = band.id } label: {
+            Circle().fill(band.enabled ? Color.green : Color.gray)
+                .overlay(Circle().stroke(.background, lineWidth: model.selectedBandID == band.id ? 3 : 1))
+                .frame(width: 14, height: 14).padding(7).contentShape(Rectangle())
+        }.buttonStyle(.plain)
+            .position(position)
+            .highPriorityGesture(DragGesture(minimumDistance: 1, coordinateSpace: .named("calibrationGraph")).onChanged { gesture in
+                if dragStart == nil { dragStart = band; model.selectedBandID = band.id }
+                guard let start = dragStart, let i = model.preset.bands.firstIndex(where: { $0.id == start.id }) else { return }
+                var value = model.preset
+                value.bands[i].frequency = max(20, min(maximum, start.frequency * pow(maximum / 20, gesture.translation.width / width)))
+                value.bands[i].gainDB = max(-24, min(24, start.gainDB - gesture.translation.height / height * 60))
+                model.preset = value
+            }.onEnded { _ in dragStart = nil })
+            .accessibilityElement().accessibilityLabel("Target \(band.type.title), \(Int(band.frequency)) hertz")
+            .accessibilityValue("\(band.gainDB.formatted()) decibels")
+            .accessibilityAction { model.selectedBandID = band.id }
+            .accessibilityAdjustableAction { direction in
+                guard let i = model.preset.bands.firstIndex(where: { $0.id == band.id }) else { return }
+                model.preset.bands[i].gainDB = max(-24, min(24, band.gainDB + (direction == .increment ? 0.1 : -0.1)))
+            }
+    }
+
 }

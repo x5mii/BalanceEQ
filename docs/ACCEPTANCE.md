@@ -7,7 +7,7 @@ This record separates deterministic checks from actual playback, supported-platf
 
 ## 1.1.0 publication decision — 2026-11-10
 
-The maintainer explicitly requested publishing 1.1.0 and updating the one-command installer. The verified build 4 is promoted unchanged as the latest community release, with its source and unnotarized status disclosed. The README command now uses the v1.1.0 installer; the installer already resolves GitHub's latest release, so older commands update too. Public v1.0.0 assets are retained. This authorization does not mark outstanding device, accessibility, signing or clean-install acceptance complete.
+The maintainer explicitly requested publishing 1.1.0 and updating the one-command installer. The verified build 4 is promoted as the latest community release after splitting the graph view into smaller expressions for Xcode 26 compiler compatibility, with its source and unnotarized status disclosed. The README command now uses the v1.1.0 installer; the installer already resolves GitHub's latest release, so older commands update too. Public v1.0.0 assets are retained. This authorization does not mark outstanding device, accessibility, signing or clean-install acceptance complete.
 
 ## 1.1.0 local candidate — 2026-11-10
 
