@@ -4,17 +4,17 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
     <channel>
         <title>BalanceEQ</title>
         <item>
-            <title>1.2.0</title>
-            <pubDate>Tue, 10 Nov 2026 15:56:52 +0100</pubDate>
-            <link>https://github.com/x5mii/BalanceEQ/releases/tag/v1.2.0</link>
-            <sparkle:version>7</sparkle:version>
-            <sparkle:shortVersionString>1.2.0</sparkle:shortVersionString>
+            <title>1.2.1</title>
+            <pubDate>Tue, 10 Nov 2026 16:13:53 +0100</pubDate>
+            <link>https://github.com/x5mii/BalanceEQ/releases/tag/v1.2.1</link>
+            <sparkle:version>8</sparkle:version>
+            <sparkle:shortVersionString>1.2.1</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.2</sparkle:minimumSystemVersion>
-            <description><![CDATA[<h2>BalanceEQ 1.2.0</h2><p>Choose your headphones, choose Neutral, Harman or Custom, then Apply Correction. One main graph compares the predicted result with your target. Manual EQ is under Advanced; sliders always sort from low to high frequencies. Custom points support dragging and mouse-wheel Q.</p><p>Neutral uses the matched reference without added preference bass. Calibration predicts the model response, not guaranteed acoustic flatness. Existing presets are preserved.</p><p>This community build is ad-hoc signed and unnotarized. Audio stops during restart; choose Start EQ afterward. macOS may request audio permission again.</p>]]></description>
-            <enclosure url="https://github.com/x5mii/BalanceEQ/releases/download/v1.2.0/BalanceEQ.zip" length="14737335" type="application/octet-stream" sparkle:edSignature="7qLKLHjUmJpUo1hsipTStNmQ81xAlwrmNgub4OqM+Sl4bTE35LBybOyR4PIVmPCqvw3VWNVUO+aYkO1yNlzCBA=="></enclosure>
+            <description><![CDATA[<h2>BalanceEQ 1.2.1</h2><p>Neutral now refits the published headphone measurement toward its compatible open reference, improving predicted accuracy without adding bands or playback buffering. Reapply Neutral to use the new fit. Existing presets and Harman keep their sound.</p><p>Harman uses the full headphone-specific correction, not only a bass shelf. Both modes remain model-based predictions, not measurements of your individual pair or guarantees of acoustic flatness.</p><p>This community build is ad-hoc signed and unnotarized. Updates preserve presets and stop EQ during restart. Choose Start EQ afterward; macOS may request audio permission again.</p>]]></description>
+            <enclosure url="https://github.com/x5mii/BalanceEQ/releases/download/v1.2.1/BalanceEQ.zip" length="14747924" type="application/octet-stream" sparkle:edSignature="ptFBuFZK/uRYT0nlkD0M05GK/8hdwKn+Bgov0hEyOs7BIe4YpVsRTjPvz1bb5chVOftTf7BtxO5C2gyRHcHFAQ=="></enclosure>
         </item>
     </channel>
 </rss><!-- sparkle-signatures:
-edSignature: pZyCfauoWPSqS7UrmJfsxHbc2gNzn//q3AEE/g9NfoXv+qOkxLJLjfV1rvmyI2JqjExdSOgxOP5O/HWHyfkFBg==
-length: 1808
+edSignature: SzCUoC+yNLwGzoJLnQkMvlu9r1n0PU0/z2LjBCfwbGPy41/Pyul2xn9U47zEmPeATrAY9jFvWcm0ZfXJPZEgDA==
+length: 1830
 -->
