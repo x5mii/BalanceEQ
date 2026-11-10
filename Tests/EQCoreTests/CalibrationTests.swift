@@ -295,4 +295,24 @@ final class CalibrationTests: XCTestCase {
         XCTAssertThrowsError(try TargetFitter.fitMeasurement(frequencies: grid,measured: flat,target: flat,seed: seed,sampleRate: 8000))
     }
 
+    func testHarmanCorrectsTheHeadphoneAcrossTheSpectrumNotOnlyBass() throws {
+        let catalog = try CalibrationCatalog.bundled()
+        for name in ["Beyerdynamic DT 990 Pro", "Beyerdynamic T5 (3rd Gen)"] {
+            let profile = try XCTUnwrap(catalog.first { $0.name == name }), curve = try profile.loadCurve()
+            for rate in [44100.0,48000,96000] {
+                let correction = try profile.calibrated(curve: curve,mode: .harman,sampleRate: rate)
+                let result = try curve.response(preset: correction,sampleRate: rate,bypassed: false,relative: true)
+                // Midrange and treble must improve too; a bass shelf alone cannot satisfy this.
+                let indices = result.frequencies.indices.filter { (200...8000).contains(result.frequencies[$0]) }
+                func rms(_ values: [Double]) -> Double { sqrt(indices.reduce(0) { $0 + values[$1] * values[$1] } / Double(indices.count)) }
+                XCTAssertLessThan(rms(result.after),rms(result.before) * 0.5)
+                let shelf = EQPreset(name: "Bass only",bands: [EQBand(type: .lowShelf,frequency: 105,gainDB: 6,q: 0.7)])
+                let shelfGain = shelf.responseDB(at: result.frequencies,sampleRate: rate)
+                XCTAssertLessThan(rms(result.after),rms(zip(result.before,shelfGain).map(+)) * 0.5)
+                XCTAssertTrue(correction.activeBands.contains { $0.type == .peak && $0.frequency > 1000 && $0.gainDB < -1 })
+                if rate == 48000 { print("Harman \(name): \(rms(result.before)) -> \(rms(result.after)) dB RMS, 200 Hz–8 kHz") }
+            }
+        }
+    }
+
 }

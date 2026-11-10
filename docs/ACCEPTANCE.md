@@ -8,11 +8,12 @@ This record separates deterministic checks from actual playback, supported-platf
 ## 1.2.1 measurement-fit candidate — 2026-11-10
 
 - Build 8 is local development; public 1.2.0 and the signed update feed are unchanged.
-- All 34 Swift tests, app lifecycle/gesture self-checks, callback harness, installer and updater checks passed. Universal arm64/x86_64 build and strict nested code-signature verification passed.
+- All 35 Swift tests, app lifecycle/gesture self-checks, callback harness, installer and updater checks passed. Universal arm64/x86_64 build and strict nested code-signature verification passed.
 - New checks verify a synthetic known correction, zero-error fallback, finite/sorted input and sample-rate boundaries, bounded boost, fixed treble filters, no additional filter count, headroom recalculation, metadata round trips, older preset compatibility and unknown fitting-version rejection. DT990 Pro, fresh/worn-pad variants and T5 are compared against the 1.2 target-adaptation baseline at 44.1/48/96 kHz.
 - DT990 Pro raw predicted RMS error from 20 Hz to 6 kHz improved 0.3811→0.3035 dB at 44.1 kHz, 0.3822→0.3109 dB at 48 kHz and 0.4001→0.3160 dB at 96 kHz. These are model-data/biquad calculations against the unchanged open reference, not acoustic measurements or proof of better mixing translation.
 - The reference curve remains the rig-compatible AutoEq base without preference bass. This update does not establish Sonarworks SR equivalence or a newly validated studio reference. High-frequency residuals are deliberately retained rather than hidden.
-- Final local installation/UI checks are pending: app-control Quit commands timed out while the user’s 1.2.0 app was processing. The running app and latest user tuning have not been overwritten.
+- Installed build 8 after the user quit the old app. Actual UI verified staged selection, measurement-fitted Neutral application, fit metadata and preamp persistence across normal quit/relaunch, and Harman application. The exact pre-test Harman preset/library was restored afterward. Startup resumed processing on FiiO K11 at 48 kHz with 128-frame I/O; this verifies route startup, not physical response or latency.
+- Harman already uses the complete model-specific correction; no extra bass-only implementation was needed. A regression check compares it with uncorrected and bass-shelf-only responses across 200 Hz–8 kHz at 44.1/48/96 kHz. At 48 kHz, DT990 Pro predicted RMS target error improves 2.0846→0.5983 dB; T5 improves 3.2531→0.6573 dB. These are predicted acoustic responses, not measurements of the user’s individual pair.
 
 ## 1.2.0 publication decision — 2026-11-10
 
