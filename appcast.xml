@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><!-- sparkle-sign-warning:
+IMPORTANT: This file was signed by Sparkle. Any modifications to this file requires re-signing this file with generate_appcast or sign_update! The signed signature will be embedded at the end of this file.
+--><rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+  <channel>
+    <title>BalanceEQ</title>
+    <link>https://github.com/x5mii/BalanceEQ/releases</link>
+    <description>Signed updates for BalanceEQ. No updater-enabled release has been published yet.</description>
+    <language>en</language>
+  </channel>
+</rss><!-- sparkle-signatures:
+edSignature: Yni0Af1WY51htPEZVc9e4VIP9PUKiAM+KtvYHsIxeHM6sctBD9WdenjQsxL/+pXhg/sod8OFRIv804977T2kAg==
+length: 640
+-->
