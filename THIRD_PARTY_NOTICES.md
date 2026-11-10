@@ -53,7 +53,7 @@ Bundled source resources:
 [scripts/update-headphone-catalog.py](scripts/update-headphone-catalog.py)
 reproduces the conversion from the pinned upstream dataset.
 
-## AutoEq calibration measurements and targets (1.1)
+## AutoEq calibration measurements and targets
 
 The calibration catalog is derived from [AutoEq](https://github.com/jaakkopasanen/AutoEq)
 at commit `7ae0f56d53074872b028649617a22bbb4232feb7`, under its MIT license.
@@ -67,3 +67,11 @@ parametric settings are included. Missing/unsupported pairs are listed in
 `scripts/update-calibration-catalog.py` reproduces the offline catalog. The app
 includes no AutoEq Python runtime, Sonarworks calibration data or SoundID code.
 SoundID is an independent product; BalanceEQ is not affiliated with Sonarworks.
+
+For 1.2, `scripts/update-calibration-targets.py` extracts explicit recommended and
+compatible rig mappings from the same pinned AutoEq `dbtools/create_webapp_data.py`.
+Nine source target curves and 50 source/variant mappings are bundled in
+`calibration-targets.json`. `Calibration-Targets-Provenance.txt` records the source;
+`Calibration-Target-Exclusions.json` lists 90 measurements without compatible Harman
+mappings. Neutral omits the preference bass shelf; Harman retains AutoEq’s documented
+bass gain, 105 Hz center and Q 0.7. Target samples retain their original MIT license.

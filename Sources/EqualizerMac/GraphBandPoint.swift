@@ -65,7 +65,7 @@ struct GraphBandPoint: NSViewRepresentable {
         }
         required init?(coder: NSCoder) { nil }
         override var acceptsFirstResponder: Bool { true }
-        @objc private func activate() { select() }
+        @objc private func activate() { window?.makeFirstResponder(self); select() }
 
         override func draw(_ dirtyRect: NSRect) {
             let circle = NSBezierPath(ovalIn: bounds.insetBy(dx: 7, dy: 7))

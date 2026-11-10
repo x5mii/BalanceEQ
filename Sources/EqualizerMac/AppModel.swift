@@ -215,6 +215,9 @@ final class AppModel: ObservableObject {
             settings.measurementID = profile.id
             settings.sourceCommit = CalibrationCatalog.sourceCommit
             settings.automaticHeadroom = false
+            settings.targetID = nil
+            settings.targetMode = nil
+            settings.customBase = nil
             value.calibration = settings
             try value.validate()
             preset = value
@@ -228,6 +231,27 @@ final class AppModel: ObservableObject {
         measurement = curve
     }
 
+    func applyCalibration(_ profile: CalibrationProfile, mode: CalibrationTargetMode, customBase: CalibrationTargetMode) async throws {
+        let previous = preset
+        let rate = audio.sampleRate > 0 ? audio.sampleRate : 48000
+        let ids = Set(previous.calibration?.customBandIDs ?? [])
+        let stored = previous.calibration?.measurementID == profile.id ? previous.bands.filter { ids.contains($0.id) } : []
+        let custom = stored.isEmpty ? [EQBand(type: .lowShelf, frequency: 105, q: 0.7), EQBand(frequency: 1000, q: 0.7), EQBand(type: .highShelf, frequency: 8000, q: 0.7)] : stored
+        let result = try await Task.detached(priority: .userInitiated) {
+            let curve = try profile.loadCurve()
+            let value = try profile.calibrated(curve: curve, mode: mode, customBase: customBase, customBands: custom, sampleRate: rate)
+            return (curve,value)
+        }.value
+        try Task.checkCancellation()
+        guard preset == previous, rate == (audio.sampleRate > 0 ? audio.sampleRate : 48000) else {
+            throw EQError.invalid("Your EQ or output changed while fitting. Apply again to use the current settings.")
+        }
+        try installProfile(result.1)
+        measurement = result.0
+        measurementProfile = profile
+        measurementError = nil
+    }
+
     func addTargetBand(_ type: EQFilterType = .peak) {
         guard preset.calibration != nil, preset.bands.count < 32, [.peak, .lowShelf, .highShelf].contains(type) else { return }
         let band = EQBand(type: type, frequency: type == .lowShelf ? 100 : type == .highShelf ? 8000 : 1000, q: 0.71)
@@ -235,6 +259,7 @@ final class AppModel: ObservableObject {
         value.bands.append(band)
         value.calibration?.customBandIDs.append(band.id)
         value.calibration?.customTargetEnabled = true
+        if value.calibration?.targetMode != nil { value.calibration?.targetMode = .custom }
         preset = value
         selectedBandID = band.id
     }
@@ -244,7 +269,8 @@ final class AppModel: ObservableObject {
         var value = preset
         value.bands.removeAll { ids.contains($0.id) }
         value.calibration?.customBandIDs = []
-        value.calibration?.customTargetEnabled = false
+        let isCustom = value.calibration?.targetMode == .custom
+        value.calibration?.customTargetEnabled = isCustom
         preset = value
         selectedBandID = preset.bands.first?.id
     }

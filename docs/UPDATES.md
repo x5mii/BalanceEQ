@@ -11,8 +11,8 @@ The normal application termination path saves presets and releases Core Audio;
 the relaunched app starts with EQ stopped, as on any ordinary launch.
 
 The feed lives at `https://raw.githubusercontent.com/x5mii/BalanceEQ/updates/appcast.xml`.
-The dedicated `updates` branch contains only the signed feed, starting with
-1.1.2/build 6. A candidate newer than the feed reports that it is up to date.
+The dedicated `updates` branch contains only the signed feed, currently advertising
+1.2.0/build 7. A candidate newer than the feed reports that it is up to date.
 Existing 1.1.1 apps have no
 updater and need one initial manual installation of 1.1.2 or later.
 
@@ -49,8 +49,8 @@ this with `codesign --deep` signing. Deep *verification* is appropriate.
    ```sh
    .build/tests/artifacts/sparkle/Sparkle/bin/generate_appcast \
      --account BalanceEQ --maximum-deltas 0 \
-     --download-url-prefix https://github.com/x5mii/BalanceEQ/releases/download/v1.1.2/ \
-     --link https://github.com/x5mii/BalanceEQ/releases/tag/v1.1.2 \
+     --download-url-prefix https://github.com/x5mii/BalanceEQ/releases/download/v1.2.0/ \
+     --link https://github.com/x5mii/BalanceEQ/releases/tag/v1.2.0 \
      path/to/staging-directory
    ```
 

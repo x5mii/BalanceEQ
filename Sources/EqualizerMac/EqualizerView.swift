@@ -11,9 +11,9 @@ struct EqualizerView: View {
     @State private var showingPresets = false
     @State private var showingHeadphones = false
     @State private var showingCredits = false
-    @State private var graphMode = 0
-    @State private var showCorrectionBands = false
-    @State private var showingGraphHelp = false
+    @State private var graphMode = 1
+    @State private var showAdvanced = false
+    @State private var linkMeasurement = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -21,44 +21,30 @@ struct EqualizerView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 10) {
                     controls
-                    HStack {
-                        Picker("Graph", selection: $graphMode) {
-                            Text("Headphones").tag(0)
-                            Text("EQ editor").tag(1)
-                            Text("Live audio").tag(2)
-                        }.pickerStyle(.segmented).labelsHidden().frame(width: 380)
-                        Spacer()
-                        Text(graphMode == 2 ? "Digital signal · dBFS" : graphMode == 1 ? "Filter gain · dB" : "Headphone calibration")
-                            .font(.caption).foregroundStyle(.secondary)
-                        Button { showingGraphHelp = true } label: { Image(systemName: "info.circle") }
-                            .buttonStyle(.plain).accessibilityLabel("About the graphs")
-                            .popover(isPresented: $showingGraphHelp) {
-                                Text("Headphones predicts how the selected model responds after correction. In Target error, green is always zero and blue is the remaining error. In Headphone + target, blue should follow green; the target itself need not be horizontal. EQ editor shows the filters applied to your audio. Live audio shows the digital signal, not your headphones. Calibration is an approximation: AutoEq smooths the treble and fits the average above 10 kHz, where measurements are less reliable. A perfectly straight high-frequency line is not guaranteed.")
-                                    .font(.callout).padding(20).frame(width: 360)
+                    CalibrationPanel(model: model, sampleRate: audio.sampleRate > 0 ? audio.sampleRate : 48000,
+                                     bypassed: model.bypassed, visible: audio.isWindowVisible)
+                    DisclosureGroup("Advanced", isExpanded: $showAdvanced) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                Picker("Advanced graph", selection: $graphMode) {
+                                    Text("Manual EQ").tag(1)
+                                    Text("Live audio").tag(2)
+                                }.pickerStyle(.segmented).labelsHidden().frame(width: 260)
+                                Spacer()
+                                Button("Link Measurement…") { linkMeasurement = true }
                             }
-                    }
-                    if graphMode == 0 {
-                        CalibrationPanel(model: model, sampleRate: audio.sampleRate > 0 ? audio.sampleRate : 48000, bypassed: model.bypassed, visible: audio.isWindowVisible)
-                    } else if graphMode == 2 {
-                        SpectrumGraph(model: audio.spectrum, running: audio.isRunning)
-                            .frame(height: 182)
-                    } else {
-                    ResponseGraph(model: model, sampleRate: audio.sampleRate > 0 ? audio.sampleRate : 48000, bypassed: model.bypassed, visible: audio.isWindowVisible)
-                        .frame(height: 182)
-                    }
-                    if graphMode != 0 || model.preset.calibration == nil || showCorrectionBands {
-                        bandSection
-                    }
-                    if graphMode == 0 && model.preset.calibration != nil {
-                        HStack {
-                            Text("\(model.preset.bands.count) filters · \(model.preset.calibration?.customBandIDs.count ?? 0) custom-target bands")
+                            Text("Manual EQ shows the electrical filters. Editing these filters changes the predicted result above. Live audio shows the digital signal, not an acoustic measurement.")
                                 .font(.caption).foregroundStyle(.secondary)
-                            Spacer()
-                            Button(showCorrectionBands ? "Hide correction sliders" : "Show correction sliders") { showCorrectionBands.toggle() }
-                                .buttonStyle(.link).font(.caption)
-                        }
-                    }
-                    inspector
+                            if graphMode == 2 {
+                                SpectrumGraph(model: audio.spectrum, running: audio.isRunning).frame(height: 182)
+                            } else {
+                                ResponseGraph(model: model, sampleRate: audio.sampleRate > 0 ? audio.sampleRate : 48000,
+                                              bypassed: model.bypassed, visible: audio.isWindowVisible).frame(height: 182)
+                            }
+                            bandSection
+                            inspector
+                        }.padding(.top, 10)
+                    }.font(.callout.weight(.medium))
                     footer
                 }.padding(.horizontal, 20).padding(.vertical, 12)
             }
@@ -70,16 +56,18 @@ struct EqualizerView: View {
         .tint(.blue)
         .onAppear {
             appDelegate.reopen = { openWindow(id: "equalizer") }
-            audio.setAnalysisEnabled(graphMode == 2)
+            audio.setAnalysisEnabled(showAdvanced && graphMode == 2)
         }
         .onDisappear { audio.setAnalysisEnabled(false) }
-        .onChange(of: graphMode) { _, mode in audio.setAnalysisEnabled(mode == 2) }
+        .onChange(of: graphMode) { _, mode in audio.setAnalysisEnabled(showAdvanced && mode == 2) }
+        .onChange(of: showAdvanced) { _, expanded in audio.setAnalysisEnabled(expanded && graphMode == 2) }
         .onChange(of: audio.sampleRate) { _, _ in model.changed() }
         .alert("BalanceEQ", isPresented: Binding(get: { model.message != nil }, set: { if !$0 { model.message = nil } })) {
             Button("OK") { model.message = nil }
         } message: { Text(model.message ?? "") }
         .sheet(isPresented: $showingSave) { saveSheet }
         .sheet(isPresented: $showingPresets) { presetSheet }
+        .sheet(isPresented: $linkMeasurement) { CalibrationBrowser(model: model, linkOnly: true) }
         .sheet(isPresented: $showingHeadphones) { HeadphoneProfilesView(model: model) }
     }
 
@@ -110,7 +98,7 @@ struct EqualizerView: View {
             VStack(alignment: .leading, spacing: 6) {
                 sectionLabel("PRESET")
                 Menu {
-                    Button("Flat") { model.choose(.flat) }
+                    Button("No correction") { model.choose(.flat) }
                     Divider()
                     ForEach(model.presets) { preset in Button(preset.name) { model.choose(preset) } }
                     Divider()
@@ -162,8 +150,8 @@ struct EqualizerView: View {
             }
             ScrollView(.horizontal) {
                 HStack(spacing: 8) {
-                    ForEach($model.preset.bands) { $band in
-                        BandStrip(band: $band, selected: model.selectedBandID == band.id,
+                    ForEach(model.preset.frequencyOrderedBands) { band in
+                        BandStrip(band: binding(for: band), selected: model.selectedBandID == band.id,
                                   sampleRate: audio.isRunning && !model.bypassed ? audio.sampleRate : nil) {
                             model.selectedBandID = band.id
                         }
@@ -175,6 +163,13 @@ struct EqualizerView: View {
             .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 18))
             .scrollBounceBehavior(.basedOnSize)
         }
+    }
+
+    private func binding(for band: EQBand) -> Binding<EQBand> {
+        Binding(get: { model.preset.bands.first(where: { $0.id == band.id }) ?? band }, set: { value in
+            guard let index = model.preset.bands.firstIndex(where: { $0.id == band.id }) else { return }
+            model.preset.bands[index] = value
+        })
     }
 
     @ViewBuilder private var inspector: some View {

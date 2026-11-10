@@ -132,4 +132,103 @@ final class CalibrationTests: XCTestCase {
         // Every index entry must point at a complete valid curve and playable filter set.
         for profile in catalog { _ = try profile.preset(curve: profile.loadCurve()) }
     }
+    func testTargetFittingAndLimits() throws {
+        let grid = (0...191).map { 20 * pow(1000, Double($0) / 191) }
+        let desired = EQPreset(name: "Known shelf", bands: [EQBand(type: .lowShelf, frequency: 105, gainDB: -6, q: 0.7)])
+        let delta = desired.responseDB(at: grid, sampleRate: 48000)
+        let fitted = try TargetFitter.fit(frequencies: grid, delta: delta, sampleRate: 48000, maximumBands: 6)
+        let response = EQPreset(name: "Fit", bands: fitted).responseDB(at: grid, sampleRate: 48000)
+        let rms = sqrt(zip(response,delta).reduce(0) { $0 + pow($1.0 - $1.1,2) } / Double(grid.count))
+        XCTAssertLessThan(rms, 0.15)
+        XCTAssertLessThanOrEqual(fitted.count,6)
+        XCTAssertEqual(try TargetFitter.fit(frequencies: grid, delta: grid.map { _ in 0 }, sampleRate: 48000, maximumBands: 0).count,0)
+        XCTAssertThrowsError(try TargetFitter.fit(frequencies: grid, delta: delta, sampleRate: 48000, maximumBands: 0))
+        XCTAssertThrowsError(try TargetFitter.fit(frequencies: grid, delta: grid.map { _ in .nan }, sampleRate: 48000, maximumBands: 6))
+        XCTAssertThrowsError(try TargetFitter.fit(frequencies: grid, delta: delta, sampleRate: 8000, maximumBands: 6))
+    }
+
+    func testNeutralHarmanAndCustomReallyChangePlayback() throws {
+        let profile = try XCTUnwrap(CalibrationCatalog.bundled().first { $0.name == "Beyerdynamic DT 990 Pro" })
+        let curve = try profile.loadCurve()
+        for rate in [44100.0,48000,96000] {
+            let neutral = try profile.calibrated(curve: curve, mode: .neutral, sampleRate: rate)
+            let harman = try profile.calibrated(curve: curve, mode: .harman, sampleRate: rate)
+            XCTAssertGreaterThan(harman.responseDB(at: 40, sampleRate: rate) - harman.preampDB - neutral.responseDB(at: 40, sampleRate: rate) + neutral.preampDB,4)
+            let n = try curve.result(preset: neutral, profile: profile, sampleRate: rate, bypassed: false)
+            let h = try curve.result(preset: harman, profile: profile, sampleRate: rate, bypassed: false)
+            XCTAssertTrue(n.target.allSatisfy { abs($0) < 1e-9 })
+            XCTAssertGreaterThan(h.target[0],5)
+            XCTAssertEqual(n.before,h.before, "All targets share one display reference")
+            for i in n.frequencies.indices {
+                XCTAssertEqual(h.after[i]-n.after[i], harman.responseDB(at: n.frequencies[i], sampleRate: rate)-harman.preampDB-neutral.responseDB(at: n.frequencies[i], sampleRate: rate)+neutral.preampDB, accuracy: 1e-8)
+            }
+            let bypass = try curve.result(preset: harman, profile: profile, sampleRate: rate, bypassed: true)
+            XCTAssertEqual(bypass.before,bypass.after)
+            let bell = EQBand(frequency: 1500, gainDB: 3, q: 1)
+            let custom = try profile.calibrated(curve: curve, mode: .custom, customBase: .neutral, customBands: [bell], sampleRate: rate)
+            XCTAssertEqual(custom.calibration?.customBandIDs,[bell.id])
+            let c = try curve.result(preset: custom, profile: profile, sampleRate: rate, bypassed: false)
+            let bellResponse = EQPreset(name: "Custom",bands: [bell]).responseDB(at: c.frequencies,sampleRate: rate)
+            for i in c.frequencies.indices {
+                XCTAssertEqual(c.target[i]-n.target[i],bellResponse[i],accuracy:1e-8)
+                XCTAssertEqual(c.after[i]-n.after[i],bellResponse[i],accuracy:1e-8)
+            }
+            XCTAssertEqual(try JSONDecoder().decode(EQPreset.self,from: JSONEncoder().encode(custom)),custom)
+            let exported = try APOCodec.parse(APOCodec.export(custom),name: "Combined")
+            XCTAssertEqual(exported.responseDB(at: 1500,sampleRate: rate),custom.responseDB(at: 1500,sampleRate: rate),accuracy:1e-7)
+        }
+    }
+
+    func testTargetsUseExplicitMappingsAndLegacyMetadataSurvives() throws {
+        let targets = try CalibrationTargets.bundled()
+        let catalog = try CalibrationCatalog.bundled()
+        let unsupported = try XCTUnwrap(catalog.first { $0.source == "Rtings" && $0.variant == "Bruel & Kjaer 5128 over-ear" })
+        XCTAssertNil(targets.target(for: unsupported,mode: .harman))
+        XCTAssertNotNil(targets.target(for: unsupported,mode: .neutral))
+        XCTAssertThrowsError(try unsupported.calibrated(curve: unsupported.loadCurve(), mode: .harman, sampleRate: 48000))
+        var legacy = calibrated()
+        let decoded = try JSONDecoder().decode(EQPreset.self,from: JSONEncoder().encode(legacy))
+        XCTAssertNil(decoded.calibration?.targetID)
+        XCTAssertNil(decoded.calibration?.targetMode)
+        XCTAssertEqual(decoded,legacy)
+        legacy.calibration?.targetMode = .neutral
+        XCTAssertThrowsError(try legacy.validate())
+        for name in ["Beyerdynamic T5 (3rd Gen)","Beyerdynamic DT 990 (fresh earpads)","Beyerdynamic DT 990 (worn earpads)"] {
+            let profile = try XCTUnwrap(catalog.first { $0.name == name })
+            XCTAssertNotNil(targets.target(for: profile,mode: .neutral))
+            XCTAssertNotNil(targets.target(for: profile,mode: .harman))
+        }
+    }
+
+    func testFrequencyOrderingPreservesBandIdentityAndStorage() throws {
+        let a = EQBand(frequency: 8000), b = EQBand(frequency: 100), c = EQBand(frequency: 100)
+        var preset = EQPreset(name: "Order",bands: [a,b,c])
+        XCTAssertEqual(preset.frequencyOrderedBands.map(\.id),[b.id,c.id,a.id])
+        XCTAssertEqual(preset.bands.map(\.id),[a.id,b.id,c.id])
+        preset.bands[0].frequency = 20
+        XCTAssertEqual(preset.frequencyOrderedBands.map(\.id),[a.id,b.id,c.id])
+        XCTAssertEqual(preset.bands[0].id,a.id)
+    }
+
+    func testTargetFitAcrossMeasurementFamilies() throws {
+        let targets = try CalibrationTargets.bundled()
+        let catalog = try CalibrationCatalog.bundled()
+        var checked = Set<String>()
+        for profile in catalog {
+            let curve = try profile.loadCurve()
+            let original = try profile.preset(curve: curve)
+            for mode in [CalibrationTargetMode.neutral,.harman] {
+                guard let target = targets.target(for: profile,mode: mode), checked.insert(target.id + mode.rawValue).inserted else { continue }
+                let preset = try profile.calibrated(curve: curve,mode: mode,sampleRate: 48000)
+                let before = try curve.response(preset: original,sampleRate: 48000,bypassed: false,relative: false)
+                let after = try curve.response(preset: preset,sampleRate: 48000,bypassed: false,relative: false)
+                let errors = zip(zip(after.after,before.after),zip(after.target,before.target)).map { ($0.0-$0.1)-($1.0-$1.1) }
+                let rms = sqrt(errors.reduce(0) { $0+$1*$1 } / Double(errors.count))
+                XCTAssertLessThan(rms,1.0,"Target adaptation error for \(target.name) / \(mode): \(rms) dB")
+                XCTAssertLessThanOrEqual(preset.bands.count,32)
+            }
+        }
+        XCTAssertEqual(checked.count,10) // Ten distinct target/mode pairs in the pinned catalog.
+    }
+
 }

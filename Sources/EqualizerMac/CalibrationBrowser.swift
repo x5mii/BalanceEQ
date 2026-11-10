@@ -5,6 +5,7 @@ import EQCore
 struct CalibrationBrowser: View {
     @ObservedObject var model: AppModel
     var linkOnly = false
+    var onSelect: ((CalibrationProfile) -> Void)?
     @Environment(\.dismiss) private var dismiss
     @State private var search = ""
     @State private var selection: String?
@@ -18,8 +19,8 @@ struct CalibrationBrowser: View {
     }
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text(linkOnly ? "Link a headphone measurement" : "Calibrate your headphones").font(.title2.bold())
-            Text(linkOnly ? "Choose the exact model and pad variant. Linking keeps your current EQ unchanged." : "Choose the exact model and pad variant. Applying replaces the current correction.")
+            Text(linkOnly ? "Link a headphone measurement" : "Choose your headphones").font(.title2.bold())
+            Text(linkOnly ? "Choose the exact model and pad variant. Linking keeps your current EQ unchanged." : "Choose the exact model and pad variant. Your sound changes only when you apply the correction.")
                 .foregroundStyle(.secondary)
             TextField("Search headphones, measurement author or variant", text: $search).textFieldStyle(.roundedBorder)
             List(matches, selection: $selection) { profile in
@@ -39,8 +40,9 @@ struct CalibrationBrowser: View {
                 Text("\(matches.count) measured profiles").font(.caption).foregroundStyle(.secondary)
                 Spacer()
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction).disabled(busy)
-                Button(linkOnly ? "Link Measurement" : "Apply Calibration") {
+                Button(linkOnly ? "Link Measurement" : "Choose Headphones") {
                     guard let profile = model.calibrationProfiles.first(where: { $0.id == selection }) else { return }
+                    if let onSelect { onSelect(profile); dismiss(); return }
                     busy = true
                     Task {
                         do { try await model.useCalibration(profile, linkOnly: linkOnly); dismiss() }

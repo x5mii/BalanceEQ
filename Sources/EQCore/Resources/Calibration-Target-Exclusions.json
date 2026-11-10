@@ -1,0 +1,542 @@
+[
+  {
+    "id": "6d5343739585439f292c9315",
+    "name": "Aiaiai TMA-2 DJ",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "8216deeb36dda939cfeb8d9b",
+    "name": "Anker Soundcore C30i",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "b361e1cb04a9829f2f7cbb21",
+    "name": "Anker Soundcore P25i",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "37fc6fce2e5587a8ec03f0e9",
+    "name": "Anker Soundcore P40i",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "987bc9d8ccb258c3a7e1a1fb",
+    "name": "Apple AirPods (3rd generation)",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "e2ef796c483290eb4d3cd21f",
+    "name": "Apple AirPods 4",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "c41703ef6bd6f8faf0135e00",
+    "name": "Apple AirPods 4 (ANC on)",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "86ac6e20f07a43e1a281dcd9",
+    "name": "Apple AirPods Pro2",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "bfd31cd7cb87bfdde55ebe43",
+    "name": "ASTRO Gaming A50 (Gen 4 2019)",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "f9d4cae45b662b147d0b94df",
+    "name": "ASUS ROG Cetra True Wireless SpeedNova",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "d7271c291a40dc8410404d1b",
+    "name": "Audeze Maxwell",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "4bf8c3279691bfa99ee7e932",
+    "name": "Audio-Technica ATH-ADX3000",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "fc96ba713299a5ee40b4bdb2",
+    "name": "Audio-Technica ATH-CT200iS",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "c79461dded07201b8c399166",
+    "name": "Beats Solo 4",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "4f110081d36c472aa83368c0",
+    "name": "Beats Solo Buds",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "ec137ea4aef26357da4c5649",
+    "name": "Beats Studio Pro",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "2ea9b7fc973f7c3d62375806",
+    "name": "Beyerdynamic DT 1990 Pro MKII",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "12aa30165009628cfb0ca4bf",
+    "name": "Beyerdynamic MMX 300 (2nd Generation)",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "7fe5f2b8ca24256b90ae5361",
+    "name": "Bose QuietComfort",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "4dbff091ce926c3a3e583a86",
+    "name": "Bose QuietComfort Earbuds II",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "6afb98293729b271e1471530",
+    "name": "Bose QuietComfort Ultra Headphones",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "02a21933abca2dd310bead92",
+    "name": "Bose Ultra Open Earbuds",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "c4ef3481ecf39c51210452ec",
+    "name": "CAT Apollo",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "0fa7e7210ae072bd374cc7f3",
+    "name": "CMF by Nothing Buds Pro 2",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "4181b64056f1d34ac85e6abf",
+    "name": "Corsair VIRTUOSO PRO",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "88d6e925589b09adcb4459d5",
+    "name": "Cypherus Audio Campfred",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "67658ebeef1960237f3febd5",
+    "name": "Devialet Gemini II",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "c7afa029d22be7d74a94f843",
+    "name": "Dyson OnTrac",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "544b3ca8699c10bb8ae43b71",
+    "name": "FAAEAL Snow Lotus",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "0dcfd0d95d0a30784644aa3f",
+    "name": "Fairphone Fairbuds",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "56dd8932c3d4c687a666354f",
+    "name": "Fengru EMX500",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "c2d5f3c581f8acf4ee4d90c3",
+    "name": "FiiO FF1",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "dbff871b2ef4d67d628614b9",
+    "name": "Final Audio Sonorous III",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "e0c9998a22b9ac2f068a24f9",
+    "name": "Grado GS3000e",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "bca452fee4532a781b847e4a",
+    "name": "Grado PS2000e",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "edbda5aa344f69ec36bd6b6b",
+    "name": "Grado RS1e",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "7dff30870f88336bea9c1461",
+    "name": "HyperX Cloud III Wireless",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "c5a682000e178a3f7fb987e7",
+    "name": "Jabra Elite 8 Active Gen 2",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "b7edd5920dcd6ac610915e57",
+    "name": "JBL Live 670NC",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "9151eb0f315e8fc0435b4680",
+    "name": "JBL Live 770NC",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "bcb995b0895f70588bcacbf0",
+    "name": "JBL Tune 520BT",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "48528dfe56f28f606995b3a2",
+    "name": "JBL Tune 760NC",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "a0f6a031d4dc6b629c69ca27",
+    "name": "JBL Tune 770NC",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "40534a5b4dddd3c237f6667e",
+    "name": "JBL Tune Buds",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "c58298509e5e98782b52e67c",
+    "name": "JBL Vibe Beam",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "4d3b49964e003a84a7f8f583",
+    "name": "JBL Vibe Buds",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "8c67aa060249dedb7a074dd2",
+    "name": "Linsoul BLD",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "45037e096d3cb6b38df0c582",
+    "name": "Logitech G535 LIGHTSPEED",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "de19c084d7b625228770030c",
+    "name": "Ludos Clamor",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "98e62416aad4df70f28a4856",
+    "name": "Monster Turbine Pro",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "599ecb673e7d56a154a06f2b",
+    "name": "NiceHCK PK2",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "60112a25892c65e02074a4c1",
+    "name": "QianYun Qian39",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "4b2fded88bd501cc0979ea88",
+    "name": "Razer BlackShark V2 HyperSpeed",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "d83ee956ebca6657fee01bed",
+    "name": "RBH EP2",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "28130636df10c298b38fc57f",
+    "name": "Samsung Galaxy Buds Live",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "1d7e5de577f55ba781bf43db",
+    "name": "Samsung Galaxy Buds3",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "c9873a53107996372bc65799",
+    "name": "Sennheiser HD 25",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "b4ffab40485914182ee302d3",
+    "name": "Sennheiser HD 490 Pro",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "9b751a2ae1870037cab8e72f",
+    "name": "Sennheiser MOMENTUM Sport",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "328766ea99b83f1ef1a9c07c",
+    "name": "Shokz OpenFit Air",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "88b9e5cb7779c94ae8871211",
+    "name": "Shokz OpenRun Pro 2 Bone Conduction",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "be3520b75f00fbdebe4a38ad",
+    "name": "Shozy Cygnus",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "0dc6e7c0bcfc97d302dcc099",
+    "name": "Shozy Stardust (bK)",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "dd0b5e2223cdc69442b58f35",
+    "name": "Shozy x AAW POLA39",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "30e78fe4787027e8acb4c9b6",
+    "name": "Simgot Audio FLD100",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "4c5a75ca301b826a5c277c91",
+    "name": "Skullcandy Dime 3",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "ef0764ea589a97034400cb6a",
+    "name": "Sonos Ace",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "d02e94f3ca3403d2a358634c",
+    "name": "Sony INZONE Buds",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "633e15ba8a5d7203f07cdbfc",
+    "name": "Sony WH-1000XM4 (ANC Off)",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "048952fe4d10ad924b5238dc",
+    "name": "Sony WH-1000XM4 (ANC on)",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "2fd79ba9ff6f27b037ef8fd5",
+    "name": "Sony WH-CH720N",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "6eee5b3f03f24d103c3e238a",
+    "name": "Sony WH-XB910N",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "b8da14e883ad4460ed20eefa",
+    "name": "SoundMAGIC E11C",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "ccb699aa1fa18e0d78526545",
+    "name": "SteelSeries Arctis Nova 5",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "dcdb0fe749444c15e48c1209",
+    "name": "SteelSeries Arctis Nova 7",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "e172016cb1691772367eec30",
+    "name": "SteelSeries Arctis Nova Pro",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "33a84f3e9128c9ded7c60c1c",
+    "name": "SteelSeries Arctis Nova Pro Wireless",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "8229e16bd6bfae01713a370b",
+    "name": "SteelSeries Arctis Pro",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "882bb30a99e684995daba317",
+    "name": "Toneking TO200",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "07507789b2d9702bf3561f87",
+    "name": "Turtle Beach Atlas Air",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "7e17369728e6f45edd248d1a",
+    "name": "Turtle Beach Stealth 500",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "5fff446b16c5bdc51b4390ec",
+    "name": "Turtle Beach Stealth 600 Gen 3",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "441b4d4ac072aa4259c49836",
+    "name": "TY Hi-Z HM150",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "34010e965e80ac2869d3467c",
+    "name": "TY Hi-Z HP32",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "2a9d92cc00ffda04a7080d6b",
+    "name": "V-MODA Crossfade 3 Wireless",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "eaf29036e8de8177052d9819",
+    "name": "Venture Electronics Asura 2.0",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "68283d2ad5514f8bc3c3be14",
+    "name": "Venture Electronics Monk Blood Orange",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "02ba816b5c7294034318c0c9",
+    "name": "Venture Electronics Monk Plus",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "158403166c30fff1a6538248",
+    "name": "Venture Electronics Zen",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  },
+  {
+    "id": "137f16735e4909c50dee6ea5",
+    "name": "Yincrow X6",
+    "mode": "harman",
+    "reason": "No explicit compatible upstream target mapping"
+  }
+]

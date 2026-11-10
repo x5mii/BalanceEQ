@@ -1,0 +1,7 @@
+AutoEq 7ae0f56d53074872b028649617a22bbb4232feb7, MIT; original authors retained in AutoEq-LICENSE.txt.
+Compatibility extracted literally (AST, no execution) from dbtools/create_webapp_data.py.
+Neutral: upstream recommended base target without the added preference bass shelf. This is BalanceEQ Neutral, not Sonarworks Studio Reference.
+Harman: upstream explicitly compatible Harman base target plus its documented 105 Hz, Q 0.7 preference shelf, evaluated at AutoEq default 44100 Hz.
+Targets are anchored once to the published reference at 1 kHz; the measurement and prediction are never independently normalized.
+Unsupported associations are listed in Calibration-Target-Exclusions.json.
+Regenerate: python3 scripts/update-calibration-targets.py

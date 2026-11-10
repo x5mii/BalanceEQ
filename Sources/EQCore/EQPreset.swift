@@ -102,6 +102,13 @@ public struct EQPreset: Identifiable, Codable, Equatable, Sendable {
         return bands.filter { $0.enabled && !inactive.contains($0.id) }
     }
 
+    /// Display order only; preserve stored filter order and stable IDs for playback, export and editing.
+    public var frequencyOrderedBands: [EQBand] {
+        bands.enumerated().sorted { a, b in
+            a.element.frequency == b.element.frequency ? a.offset < b.offset : a.element.frequency < b.element.frequency
+        }.map(\.element)
+    }
+
     public static var flat: EQPreset {
         EQPreset(name: "Flat", bands: [31.25, 62.5, 125, 250, 500, 1_000, 2_000, 4_000, 8_000, 16_000]
             .map { EQBand(frequency: $0) })
@@ -130,6 +137,15 @@ public struct EQPreset: Identifiable, Codable, Equatable, Sendable {
             }
         }
         if let calibration {
+            if let id = calibration.targetID {
+                guard id.count == 24, id.allSatisfy(\.isHexDigit), calibration.targetMode != nil,
+                      calibration.customBase != .custom,
+                      calibration.customTargetEnabled == (calibration.targetMode == .custom) else {
+                    throw EQError.invalid("Invalid calibration target settings.")
+                }
+            } else if calibration.targetMode != nil || calibration.customBase != nil {
+                throw EQError.invalid("The calibration target reference is missing.")
+            }
             let ids = Set(calibration.customBandIDs)
             guard calibration.measurementID.count == 24, calibration.measurementID.allSatisfy(\.isHexDigit),
                   calibration.sourceCommit.count == 40, calibration.sourceCommit.allSatisfy(\.isHexDigit),

@@ -8,6 +8,9 @@ public struct CalibrationSettings: Codable, Equatable, Sendable {
     public var customBandIDs: [UUID] = []
     public var customTargetEnabled = false
     public var automaticHeadroom = true
+    public var targetID: String?
+    public var targetMode: CalibrationTargetMode?
+    public var customBase: CalibrationTargetMode?
     public init(measurementID: String, sourceCommit: String = CalibrationCatalog.sourceCommit) {
         self.measurementID = measurementID; self.sourceCommit = sourceCommit
     }
@@ -106,8 +109,15 @@ public struct CalibrationCurve: Decodable, Sendable {
         guard sampleRate.isFinite, sampleRate >= 8000, sampleRate <= 384000 else { throw EQError.invalid("Unsupported sample rate.") }
         let maximum = min(20000, sampleRate * 0.49)
         let grid = (0...384).map { 20 * pow(maximum / 20, Double($0) / 384) }
-        let raw = interpolate(measured, at: grid)
-        let reference = interpolate(target, at: grid)
+        let raw = Self.interpolate(measured, frequencies: frequencies, at: grid)
+        var reference = Self.interpolate(target, frequencies: frequencies, at: grid)
+        if let id = preset.calibration?.targetID {
+            let selected = try CalibrationTargets.bundled().target(id: id)
+            let mode = preset.calibration?.targetMode
+            let bass = mode == .harman || (mode == .custom && preset.calibration?.customBase == .harman)
+            let anchor = Self.interpolate(target, frequencies: frequencies, at: [1000])[0]
+            reference = selected.response(at: grid, bass: bass, anchor: anchor)
+        }
         let customIDs = Set(preset.calibration?.customBandIDs ?? [])
         let custom = EQPreset(name: "Target", bands: preset.activeBands.filter { customIDs.contains($0.id) })
         let delta = custom.responseDB(at: grid, sampleRate: sampleRate)
@@ -120,7 +130,18 @@ public struct CalibrationCurve: Decodable, Sendable {
                         target: relative ? grid.map { _ in 0 } : desired)
     }
 
-    private func interpolate(_ values: [Double], at grid: [Double]) -> [Double] {
+    /// One fixed Neutral reference for before, after and target; deviations are never normalized away.
+    public func result(preset: EQPreset, profile: CalibrationProfile, sampleRate: Double, bypassed: Bool) throws -> Response {
+        let response = try response(preset: preset, sampleRate: sampleRate, bypassed: bypassed, relative: false)
+        let anchor = Self.interpolate(target, frequencies: frequencies, at: [1000])[0]
+        let neutral = try CalibrationTargets.bundled().target(for: profile, mode: .neutral)
+        let baseline = neutral?.response(at: response.frequencies, bass: false, anchor: anchor)
+            ?? Self.interpolate(target, frequencies: frequencies, at: response.frequencies)
+        return Response(frequencies: response.frequencies, before: zip(response.before,baseline).map(-),
+                        after: zip(response.after,baseline).map(-), target: zip(response.target,baseline).map(-))
+    }
+
+    static func interpolate(_ values: [Double], frequencies: [Double], at grid: [Double]) -> [Double] {
         var index = 0
         return grid.map { f in
             while index + 1 < frequencies.count - 1 && frequencies[index + 1] < f { index += 1 }

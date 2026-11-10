@@ -1,9 +1,21 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 # Release acceptance record
 
-Status: **1.1.0 community distribution authorized without notarization; full hardware and signed-distribution acceptance incomplete**.
+Status: **1.2.0 community distribution authorized without notarization; full hardware and signed-distribution acceptance incomplete**.
 
 This record separates deterministic checks from actual playback, supported-platform acceptance, and distribution. Only mark a checkbox after recording evidence from the named build and device. The universal build and passing DSP tests cannot establish real-device volume, latency, recovery, or protected-media behavior.
+
+## 1.2.0 publication decision — 2026-11-10
+
+The maintainer explicitly requested publishing 1.2.0/build 7 and updating the installer command and signed Sparkle feed. The tested local candidate is promoted with the source tag and universal community download. Earlier releases remain available. This does not mark outstanding hardware, accessibility, supported-platform or Apple-signed distribution acceptance complete.
+
+## 1.2.0 local workflow candidate — 2026-11-10
+
+- Build 7 keeps public 1.1.2, its installer and its signed update feed unchanged.
+- New deterministic checks cover the ten distinct target/mode pairs used by the pinned catalog (target adaptation RMS below 1 dB), synthetic shelf fitting, Neutral/Harman/Custom playback differences, fixed-reference plots, bypass, 44.1/48/96 kHz, unavailable mappings, metadata round trips, combined APO export, and stable frequency ordering. This bounds target adaptation error, not total headphone residual error.
+- Actual UI checks with processing stopped: Neutral/Harman/Custom apply; staged target/model selection leaves existing correction intact; exact T5 selection; custom graph dragging (1 kHz/0 dB → 1.424 kHz/+3.956 dB); mouse-wheel Q, arrow gain and Option-arrow Q; Reset Custom; and Advanced disclosure. Editing a 105 Hz shelf to 800 Hz moved its slider after the 640 Hz band while retaining its gain, Q and selection.
+- All **32 Swift tests**, app gesture/lifecycle self-checks, callback harness, installer and updater checks passed. Universal arm64/x86_64 build and strict signature verification passed. Custom T5 target identity, Harman base, edited frequency/gain/Q survived normal quit/relaunch. Accessible point activation now transfers keyboard focus; an arrow edit after AX activation was verified. Final layout has one main graph with Advanced collapsed. Original user presets and tuning were restored after testing.
+- The audio callback and buffer configuration are unchanged. These checks do not establish new acoustic, latency, Intel, macOS 14.2, VoiceOver or system reduced-motion/transparency acceptance.
 
 ## 1.1.0 publication decision — 2026-11-10
 
