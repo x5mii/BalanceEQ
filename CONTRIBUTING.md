@@ -19,6 +19,7 @@ The first command runs the Swift tests, Core Audio teardown fault-injection chec
 - `Sources/EqualizerMac`: SwiftUI UI, app/menu lifecycle, and the serial Core Audio control queue. The controller owns device listeners, the process tap, private aggregate device, and engine lifetime.
 - `Sources/EQCore`: validated preset data, the strict APO codec, and atomic local persistence. Changes to imported syntax must include rejection and round-trip tests.
 - `Sources/EqualizerMac/DecimalField.swift`: draft text commits on Return/focus change; never publish partial numeric input to the engine.
+- `Sources/EqualizerMac/AppUpdater.swift`: native Sparkle UI binding. Keep update work outside audio processing; preserve manual checks, signed-feed/archive validation and disabled profiling. `scripts/check-updater.py` verifies these settings and packaged framework integrity.
 - `Sources/EqualizerMac/AudioSpectrum.swift`: Accelerate FFT on the control queue. The C engine hands over bounded stereo snapshots through atomic ownership; never move analysis into the audio callback.
 - `Sources/CEQ`: C-only render callback and double-precision biquad DSP. Coefficients are prepared outside the callback. A lock-free triple buffer transfers the latest parameters; complete filter banks crossfade over 20 ms.
 
@@ -31,3 +32,5 @@ Add the smallest reproducible check for a behavior change. Run the full check sc
 Audio-route changes also need the relevant manual checks in [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md). Record hardware, OS version, sample rate, exact build/commit, procedure, and measurements; do not turn an untested row into a pass because the code builds. Keep raw audio recordings out of bug reports; synthetic test signals and logs without private content are preferable.
 
 For releases, align the bundle version and release archive name, complete hardware and clean-install acceptance, then run `scripts/notarize.sh` with maintainer credentials. Keep signing credentials out of the repository. Publish the matching source revision, notarized universal archive, checksum, and known compatibility limits together. The notarization script itself performs no publication.
+
+Updater-enabled releases must also publish the signed feed using [docs/UPDATES.md](docs/UPDATES.md). Never upload private signing keys or advertise an archive before its final public download is verified.

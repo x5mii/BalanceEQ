@@ -15,4 +15,5 @@ clang -std=c11 -Wall -Wextra -Werror -DEQ_AUDIO_CALLBACK_TEST_MAIN \
 plutil -lint Resources/Info.plist
 bash -n scripts/install.sh scripts/notarize.sh
 python3 scripts/check-installer.py
+python3 scripts/check-updater.py
 git diff --check

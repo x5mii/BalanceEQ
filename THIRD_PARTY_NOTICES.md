@@ -5,7 +5,16 @@ See LICENSE for the full license. The app is provided without warranty.
 
 The app links to Apple's system frameworks (SwiftUI, AppKit, Core Audio,
 Accelerate, Foundation and Combine). Their implementation is provided by macOS;
-no third-party runtime packages are bundled.
+these frameworks are not bundled.
+
+## Sparkle updates
+
+The app bundles [Sparkle 2.10.1](https://github.com/sparkle-project/Sparkle/tree/2.10.1),
+pinned to commit `ab7d71291238df6e0492143b120c9b696a35f603`, for native software updates.
+Sparkle is MIT licensed, with additional BSD/zlib-licensed components. Its complete
+license and component notices are retained in `Resources/Sparkle-LICENSE.txt` and
+copied into the app. Update checks are manual; system profiling and automatic
+installation are disabled. Sparkle does not participate in audio processing.
 
 The original DSP implementation follows the equations in Robert Bristow-Johnson's
 Audio EQ Cookbook, published by the W3C Audio Working Group:

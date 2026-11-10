@@ -3,7 +3,7 @@
 
 <img src="Resources/BalanceEQ.png" alt="BalanceEQ logo" width="96">
 
-A native, free macOS equalizer inspired by the workflow of Equalizer APO and Peace. SwiftUI controls sit above a small C audio engine. There are no accounts, ads, subscriptions, telemetry, installed audio drivers, or third-party runtime packages.
+A native, free macOS equalizer inspired by the workflow of Equalizer APO and Peace. SwiftUI controls sit above a small C audio engine. There are no accounts, ads, subscriptions, telemetry, installed audio drivers, or third-party audio runtime packages. Native software updates use the bundled Sparkle framework.
 
 **[BalanceEQ 1.1.1](https://github.com/x5mii/BalanceEQ/releases/tag/v1.1.1)** is available as an **unnotarized community build**, with source and a universal download. It is ad-hoc signed, without an Apple-verified developer identity. See the [release notes](docs/releases/1.1.1.md). Hardware audio acceptance, macOS 14.2 compatibility, and Intel runtime testing remain pending; see [the acceptance record](docs/ACCEPTANCE.md). Building successfully does not establish those results.
 
@@ -17,6 +17,14 @@ A native, free macOS equalizer inspired by the workflow of Equalizer APO and Pea
 - Automatic headroom is enabled for new calibrations. Editing preamp switches to manual; **Auto headroom** re-enables the estimate. This is not a limiter.
 - Existing OPRA profiles and imported text are EQ-only unless you explicitly **Link Measurement** to an exact headphone variant. Linking preserves your current filters. Missing or outdated measurement references leave audio intact and display an explanation.
 - Saved presets retain calibration links and target-band identities. APO exports flatten the active correction into ordinary filters; they cannot carry the measurement/target editor metadata. Use BalanceEQ’s local saved presets to retain it.
+
+## In-app updates (1.1.2 candidate)
+
+Use **Check for Updates…** in the menu-bar menu, application menu, or About window. Sparkle checks the signed feed, presents a newer release, verifies its signature, and installs/relaunches after you choose to update. No Terminal command is needed once this version is installed. Checks are manual; there are no background polls, automatic installations, or system-profile submissions.
+
+Presets stay in the existing Application Support folder. Audio stops for the restart; choose **Start EQ** afterward. Ad-hoc community builds can still trigger macOS audio permission or Gatekeeper prompts. Update signatures authenticate releases to the app's embedded key; they do not provide Apple notarization. Errors leave the existing app in place.
+
+Existing 1.1.1 and older apps need one initial download/install to gain this feature. The updater-enabled 1.1.2 candidate has not yet been released. [Maintainer instructions](docs/UPDATES.md) describe signed-feed publication.
 
 ## Install with one command
 

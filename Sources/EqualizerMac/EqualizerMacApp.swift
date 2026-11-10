@@ -41,6 +41,7 @@ enum EqualizerLauncher {
 struct EqualizerMacApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @StateObject private var model = AppModel()
+    @StateObject private var updater = AppUpdater()
 
     var body: some Scene {
         Window("BalanceEQ", id: "equalizer") {
@@ -56,6 +57,7 @@ struct EqualizerMacApp: App {
         .windowResizability(.contentMinSize)
         .commands {
             CommandGroup(replacing: .newItem) { }
+            CommandGroup(after: .appInfo) { CheckForUpdatesButton(updater: updater) }
             CommandGroup(after: .importExport) {
                 Button("Import APO Preset…", action: model.importPreset).keyboardShortcut("o")
                 Button("Export APO Preset…", action: model.exportPreset).keyboardShortcut("e", modifiers: [.command, .shift])
@@ -68,7 +70,7 @@ struct EqualizerMacApp: App {
         }
 
         MenuBarExtra("BalanceEQ", systemImage: "slider.vertical.3") {
-            EqualizerMenu(model: model, audio: model.audio)
+            EqualizerMenu(model: model, audio: model.audio, updater: updater)
         }
 
         Window("About BalanceEQ", id: "about") {
@@ -77,6 +79,7 @@ struct EqualizerMacApp: App {
                 Text("BalanceEQ").font(.title2.bold())
                 Text("\(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Development") · Free and open source").foregroundStyle(.secondary)
                 Text("System-wide sound, shaped by you.")
+                CheckForUpdatesButton(updater: updater)
                 Text("Copyright © 2026 BalanceEQ contributors.\nLicensed under GNU GPL version 3 or later.\nProvided without warranty. You may redistribute and modify this software under the license terms.")
                     .font(.caption).multilineTextAlignment(.center).foregroundStyle(.secondary)
                 HStack {
@@ -95,6 +98,7 @@ struct EqualizerMacApp: App {
 private struct EqualizerMenu: View {
     @ObservedObject var model: AppModel
     @ObservedObject var audio: AudioController
+    let updater: AppUpdater
     @Environment(\.openWindow) private var openWindow
     var body: some View {
         Text(audio.isStarting ? "Starting system audio…" : (audio.isRunning ? "Processing system audio" : "Processing stopped"))
@@ -111,6 +115,7 @@ private struct EqualizerMenu: View {
             if model.presets.isEmpty { Text("Save a preset in the main window") }
         }
         Divider()
+        CheckForUpdatesButton(updater: updater)
         Button("About BalanceEQ") {
             openWindow(id: "about")
             NSApp.activate(ignoringOtherApps: true)
